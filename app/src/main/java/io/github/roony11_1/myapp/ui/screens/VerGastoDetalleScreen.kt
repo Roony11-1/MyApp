@@ -1,17 +1,22 @@
 package io.github.roony11_1.myapp.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,51 +29,72 @@ import io.github.roony11_1.myapp.ui.viewmodel.VerGastoViewModel
 @Composable
 fun VerGastoDetalleScreen(
     modifier: Modifier = Modifier,
-    viewModel: VerGastoViewModel)
-{
+    viewModel: VerGastoViewModel
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        viewModel.cargar()
-    }
+    LaunchedEffect(Unit) { viewModel.cargar() }
 
-    when (val state = uiState)
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center)
     {
-        is UiState.Idle -> Unit
-        is UiState.Cargando -> CircularProgressIndicator()
-        is UiState.Error -> Text(state.mensaje, color = MaterialTheme.colorScheme.error)
-        is UiState.Exito -> {
-            val gasto = state.data
-            if (gasto == null)
-                Text("Gasto no encontrado")
-            else
-                DetalleGasto(gasto, modifier)
+        when (val state = uiState)
+        {
+            is UiState.Idle -> Unit
+
+            is UiState.Cargando -> CircularProgressIndicator()
+
+            is UiState.Error -> Text(
+                text = state.mensaje,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(24.dp))
+
+            is UiState.Exito -> {
+                val gasto = state.data
+
+                if (gasto == null)
+                {
+                    Text("Gasto no encontrado", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                else
+                {
+                    DetalleGasto(gasto, Modifier.fillMaxSize())
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun DetalleGasto(
-    gasto: Gasto,
-    modifier: Modifier = Modifier)
+private fun DetalleGasto(gasto: Gasto, modifier: Modifier = Modifier)
 {
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp))
+        modifier = modifier.padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp))
     {
-        Text(text = formatearMonto(gasto.monto), style = MaterialTheme.typography.headlineMedium)
-
-        Text(text = gasto.descripcion, style = MaterialTheme.typography.bodyLarge)
-
-        Text(text = "Cuenta ID: ${gasto.cuentaId}", style = MaterialTheme.typography.bodyMedium)
-
-        Text(text = "Categoría ID: ${gasto.categoriaId}", style = MaterialTheme.typography.bodyMedium)
-
         Text(
-            text = formatearFechaHora(gasto.fechaHora),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+            text = formatearMonto(gasto.monto),
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary)
+
+        Text(gasto.descripcion, style = MaterialTheme.typography.titleMedium)
+        HorizontalDivider()
+        FilaDetalle("Cuenta", "ID ${gasto.cuentaId}")
+        FilaDetalle("Categoría", "ID ${gasto.categoriaId}")
+        FilaDetalle("Fecha", formatearFechaHora(gasto.fechaHora))
+    }
+}
+
+@Composable
+private fun FilaDetalle(etiqueta: String, valor: String)
+{
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween)
+    {
+        Text(etiqueta, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(valor)
     }
 }

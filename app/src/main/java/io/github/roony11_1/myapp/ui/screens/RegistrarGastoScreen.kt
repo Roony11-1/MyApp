@@ -2,7 +2,10 @@ package io.github.roony11_1.myapp.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,47 +36,62 @@ fun RegistrarGastoScreen(
     var descripcion by remember { mutableStateOf("") }
 
     LaunchedEffect(uiState) {
-        if (uiState is UiState.Exito)
-            onGuardadoExitoso()
+        if (uiState is UiState.Exito) onGuardadoExitoso()
     }
 
     Column(
-        modifier = modifier.padding(16.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp))
     {
+        Text("Registrar gasto", style = MaterialTheme.typography.headlineSmall)
+
         OutlinedTextField(
             value = monto,
             onValueChange = { monto = it },
             label = { Text("Monto") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            isError = uiState is UiState.Error,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true)
 
         OutlinedTextField(
             value = descripcion,
             onValueChange = { descripcion = it },
-            label = { Text("Descripción") })
+            label = { Text("Descripción") },
+            isError = uiState is UiState.Error,
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2)
 
-        when (val state = uiState)
+        if (uiState is UiState.Error)
         {
-            is UiState.Error -> Text(state.mensaje, color = MaterialTheme.colorScheme.error)
-            UiState.Cargando -> CircularProgressIndicator()
-            else -> Unit
+            Text(
+                text = (uiState as UiState.Error).mensaje,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall)
         }
 
         Button(
             onClick = {
                 val montoDouble = monto.toDoubleOrNull()
-                if (montoDouble == null || montoDouble <= 0)
-                    return@Button
-
-                viewModel.onGuardar(
-                    monto = montoDouble,
-                    descripcion = descripcion,
-                    cuentaId = 1L,
-                    categoriaId = 1L)
+                if (montoDouble == null || montoDouble <= 0) return@Button
+                viewModel.onGuardar(montoDouble, descripcion, 1L, 1L)
             },
-            enabled = uiState !is UiState.Cargando)
+            enabled = uiState !is UiState.Cargando,
+            modifier = Modifier.fillMaxWidth())
         {
-            Text("Guardar")
+            if (uiState is UiState.Cargando)
+            {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary)
+            }
+            else
+            {
+                Text("Guardar")
+            }
         }
     }
 }
