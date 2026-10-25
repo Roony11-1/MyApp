@@ -2,6 +2,7 @@ package io.github.roony11_1.myapp.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -35,8 +37,20 @@ fun RegistrarGastoScreen(
     var monto by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
 
+    var categoriasSeleccionadas by remember {
+        mutableStateOf(setOf<Long>(3L))
+    }
+
+    var cuentaSeleccionadaId by remember {
+        mutableStateOf<Long>(1L)
+    }
+
     LaunchedEffect(uiState) {
-        if (uiState is UiState.Exito) onGuardadoExitoso()
+        if (uiState is UiState.Exito)
+        {
+            viewModel.onExitoConsumido()
+            onGuardadoExitoso()
+        }
     }
 
     Column(
@@ -64,6 +78,47 @@ fun RegistrarGastoScreen(
             modifier = Modifier.fillMaxWidth(),
             minLines = 2)
 
+        Text(
+            text = "Categorías",
+            style = MaterialTheme.typography.labelLarge)
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            viewModel.categorias.forEach { categoria ->
+                FilterChip(
+                    selected = categoria.id in categoriasSeleccionadas,
+                    onClick = {
+                        categoriasSeleccionadas =
+                            if (categoria.id in categoriasSeleccionadas)
+                                categoriasSeleccionadas - categoria.id
+                            else
+                                categoriasSeleccionadas + categoria.id
+                    },
+                    label = { Text(categoria.nombre) },
+                    enabled = uiState !is UiState.Cargando
+                )
+            }
+        }
+
+        Text(
+            text = "Cuenta",
+            style = MaterialTheme.typography.labelLarge)
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp))
+        {
+            viewModel.cuentas.forEach { cuenta ->
+                FilterChip(
+                    selected = cuenta.id == cuentaSeleccionadaId,
+                    onClick = {
+                        cuentaSeleccionadaId = cuenta.id
+                    },
+                    label = { Text(cuenta.nombre) },
+                    enabled = uiState !is UiState.Cargando
+                )
+            }
+        }
+
         if (uiState is UiState.Error)
         {
             Text(
@@ -72,11 +127,27 @@ fun RegistrarGastoScreen(
                 style = MaterialTheme.typography.bodySmall)
         }
 
+
+
         Button(
             onClick = {
                 val montoDouble = monto.toDoubleOrNull()
-                if (montoDouble == null || montoDouble <= 0) return@Button
-                viewModel.onGuardar(montoDouble, descripcion, 1L, 1L)
+                if (montoDouble == null || montoDouble <= 0)
+                    return@Button
+
+                val cuenta = viewModel.cuentas.find {
+                    it.id == cuentaSeleccionadaId
+                } ?: return@Button
+
+                val categorias = viewModel.categorias.filter {
+                    it.id in categoriasSeleccionadas
+                }
+
+                viewModel.onGuardar(
+                    montoDouble,
+                    descripcion,
+                    cuenta,
+                    categorias)
             },
             enabled = uiState !is UiState.Cargando,
             modifier = Modifier.fillMaxWidth())

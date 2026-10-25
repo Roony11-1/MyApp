@@ -11,12 +11,20 @@ class GastoRepository(private val dao: IGastoDao) : IGastoRepository
 {
     override suspend fun save(gasto: Gasto): Gasto
     {
-       val id = dao.insert(gasto)
+        val id = dao.insert(gasto)
 
-        return gasto.copy(id = id)
+        return Gasto(
+            id = id,
+            monto = gasto.monto,
+            descripcion = gasto.descripcion,
+            cuenta = gasto.cuenta,
+            categorias = gasto.categorias,
+            fechaHora = gasto.fechaHora)
     }
 
     override suspend fun findAll(): List<Gasto> = dao.selectAll()
 
     override suspend fun findById(id: Long): Gasto? = dao.selectById(id)
+
+    override suspend fun findPage(limit: Int, offset: Int): List<Gasto> = dao.selectPage(limit, offset)
 }

@@ -9,6 +9,7 @@ interface IGastoDao
     suspend fun insert(gasto: Gasto): Long
     suspend fun selectAll(): List<Gasto>
     suspend fun selectById(id: Long): Gasto?
+    suspend fun selectPage(limit: Int, offset: Int): List<Gasto>
 }
 
 class InMemoryGastoDao : IGastoDao
@@ -19,7 +20,15 @@ class InMemoryGastoDao : IGastoDao
 
     override suspend fun insert(gasto: Gasto): Long = mutex.withLock {
         val id = nextId++
-        gastos.add(gasto.copy(id = id))
+
+        gastos.add(
+            Gasto(
+                id = id,
+                monto = gasto.monto,
+                descripcion = gasto.descripcion,
+                cuenta = gasto.cuenta,
+                categorias = gasto.categorias,
+                fechaHora = gasto.fechaHora))
         id
     }
 
@@ -29,5 +38,19 @@ class InMemoryGastoDao : IGastoDao
 
     override suspend fun selectById(id: Long): Gasto? = mutex.withLock {
         gastos.firstOrNull { it.id == id }
+    }
+
+    override suspend fun selectPage(
+        limit: Int,
+        offset: Int): List<Gasto> = mutex.withLock {
+        require(limit > 0) { "El límite debe ser positivo" }
+        require(offset >= 0) { "El desplazamiento no puede ser negativo" }
+
+        gastos
+            .sortedWith(
+                compareByDescending<Gasto> { it.fechaHora }
+                    .thenByDescending { it.id })
+            .drop(offset)
+            .take(limit)
     }
 }

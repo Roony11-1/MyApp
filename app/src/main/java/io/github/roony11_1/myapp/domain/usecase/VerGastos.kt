@@ -6,8 +6,8 @@ import io.github.roony11_1.myapp.domain.repository.IGastoRepository
 class VerGastos(
     private val gastoRepository: IGastoRepository)
 {
-    suspend operator fun invoke(): List<Gasto>
+    suspend operator fun invoke(limit: Int, offset: Int): List<Gasto>
     {
-        return gastoRepository.findAll()
+        return gastoRepository.findPage(limit, offset)
     }
 }

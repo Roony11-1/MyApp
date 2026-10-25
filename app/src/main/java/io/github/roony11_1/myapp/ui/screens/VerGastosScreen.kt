@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,9 +32,15 @@ import io.github.roony11_1.myapp.ui.viewmodel.VerGastosViewModel
 fun VerGastosScreen(
     modifier: Modifier = Modifier,
     viewModel: VerGastosViewModel,
-    onGastoClick: (Long) -> Unit
-) {
+    onGastoClick: (Long) -> Unit)
+{
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val cargandoMas by viewModel.cargandoMas.collectAsStateWithLifecycle()
+    val hayMas by viewModel.hayMas.collectAsStateWithLifecycle()
+    val errorAlCargarMas by
+    viewModel.errorAlCargarMas.collectAsStateWithLifecycle()
+
     LaunchedEffect(Unit) { viewModel.cargar() }
 
     Column(modifier = modifier.fillMaxSize())
@@ -80,6 +88,41 @@ fun VerGastosScreen(
                                         formatearMonto(gasto.monto),
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+
+                        item {
+                            errorAlCargarMas?.let { mensaje ->
+                                Text(
+                                    text = mensaje,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                            }
+
+                            if (hayMas)
+                            {
+                                Button(
+                                    onClick = { viewModel.cargarMas() },
+                                    enabled = !cargandoMas,
+                                    modifier = Modifier.fillMaxWidth())
+                                {
+                                    if (cargandoMas)
+                                    {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.onPrimary)
+                                    }
+                                    else
+                                    {
+                                        Text(
+                                            if (errorAlCargarMas != null)
+                                                "Reintentar"
+                                            else
+                                                "Cargar más")
+                                    }
                                 }
                             }
                         }

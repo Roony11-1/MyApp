@@ -7,4 +7,5 @@ interface IGastoRepository
     suspend fun save(gasto: Gasto): Gasto
     suspend fun findAll(): List<Gasto>
     suspend fun findById(id: Long): Gasto?
+    suspend fun findPage(limit: Int, offset: Int): List<Gasto>
 }

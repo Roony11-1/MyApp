@@ -29,8 +29,8 @@ import io.github.roony11_1.myapp.ui.viewmodel.VerGastoViewModel
 @Composable
 fun VerGastoDetalleScreen(
     modifier: Modifier = Modifier,
-    viewModel: VerGastoViewModel
-) {
+    viewModel: VerGastoViewModel)
+{
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.cargar() }
@@ -81,8 +81,9 @@ private fun DetalleGasto(gasto: Gasto, modifier: Modifier = Modifier)
 
         Text(gasto.descripcion, style = MaterialTheme.typography.titleMedium)
         HorizontalDivider()
-        FilaDetalle("Cuenta", "ID ${gasto.cuentaId}")
-        FilaDetalle("Categoría", "ID ${gasto.categoriaId}")
+        FilaDetalle("Cuenta", gasto.cuenta.nombre)
+        FilaDetalle("Categorías", gasto.categorias.joinToString(", ") { it.nombre })
+
         FilaDetalle("Fecha", formatearFechaHora(gasto.fechaHora))
     }
 }

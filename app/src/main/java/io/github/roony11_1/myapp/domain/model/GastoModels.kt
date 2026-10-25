@@ -20,19 +20,21 @@ data class Categoria(
     }
 }
 
-data class Gasto(
+class Gasto(
     val id: Long = 0L,
     val monto: Double,
     val descripcion: String,
-    val cuentaId: Long,
-    val categoriaId: Long,
+    val cuenta: Cuenta,
+    categorias: List<Categoria>,
     val fechaHora: Long)
 {
+    val categorias: List<Categoria> = categorias
+        .distinctBy { it.id }
+
     init
     {
         require(monto > 0) { "El monto debe ser positivo" }
-        require(descripcion.isNotBlank()) { "La descripción es obligatorio" }
-        require(cuentaId > 0) { "La cuenta es obligatoria" }
-        require(categoriaId > 0) { "La categoría es obligatoria" }
+        require(descripcion.isNotBlank()) { "La descripción es obligatoria" }
+        require(this.categorias.isNotEmpty()) { "Debe seleccionar una categoría" }
     }
 }
