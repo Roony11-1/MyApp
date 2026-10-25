@@ -23,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.roony11_1.myapp.core.util.formatearFechaHora
 import io.github.roony11_1.myapp.core.util.formatearMonto
 import io.github.roony11_1.myapp.domain.model.Gasto
+import io.github.roony11_1.myapp.ui.components.UiStateContent
 import io.github.roony11_1.myapp.ui.viewmodel.UiState
 import io.github.roony11_1.myapp.ui.viewmodel.VerGastoViewModel
 
@@ -33,35 +34,28 @@ fun VerGastoDetalleScreen(
 {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) { viewModel.cargar() }
+    LaunchedEffect(Unit) {
+        viewModel.cargar()
+    }
 
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center)
     {
-        when (val state = uiState)
-        {
-            is UiState.Idle -> Unit
+        UiStateContent(uiState) { isLoading, error, gasto ->
+            when
+            {
+                isLoading -> CircularProgressIndicator()
 
-            is UiState.Cargando -> CircularProgressIndicator()
+                error != null -> Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error)
 
-            is UiState.Error -> Text(
-                text = state.mensaje,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(24.dp))
+                gasto != null -> DetalleGasto(
+                    gasto,
+                    Modifier.fillMaxSize())
 
-            is UiState.Exito -> {
-                val gasto = state.data
-
-                if (gasto == null)
-                {
-                    Text("Gasto no encontrado", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                else
-                {
-                    DetalleGasto(gasto, Modifier.fillMaxSize())
-                }
+                uiState is UiState.Exito -> Text("Gasto no encontrado")
             }
         }
     }
