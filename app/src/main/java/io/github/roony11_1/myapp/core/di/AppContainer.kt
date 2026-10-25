@@ -4,15 +4,18 @@ import android.content.Context
 import io.github.roony11_1.myapp.core.services.IClock
 import io.github.roony11_1.myapp.core.services.SystemClock
 import io.github.roony11_1.myapp.data.local.dao.IGastoDao
-import io.github.roony11_1.myapp.data.local.dao.InMemoryGastoDao
+import io.github.roony11_1.myapp.data.local.dao.SqliteGastoDao
+import io.github.roony11_1.myapp.data.local.db.GastosDatabaseHelper
 import io.github.roony11_1.myapp.data.local.repository.GastoRepository
 import io.github.roony11_1.myapp.domain.repository.IGastoRepository
 
 class AppContainer(context: Context)
 {
+    private val appContext = context.applicationContext
     val clock: IClock by lazy { SystemClock() }
-
-    private val gastoDao: IGastoDao by lazy { InMemoryGastoDao() }
-
+    private val databaseHelper: GastosDatabaseHelper by lazy {
+        GastosDatabaseHelper(appContext)
+    }
+    private val gastoDao: IGastoDao by lazy { SqliteGastoDao(databaseHelper) }
     val gastoRepository: IGastoRepository by lazy { GastoRepository(gastoDao) }
 }
