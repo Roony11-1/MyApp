@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.roony11_1.myapp.core.di.AppContainer
+import io.github.roony11_1.myapp.core.pagination.Page
 import io.github.roony11_1.myapp.domain.model.Gasto
 import io.github.roony11_1.myapp.domain.usecase.VerGastos
 import kotlinx.coroutines.CancellationException
@@ -18,8 +19,12 @@ class VerGastosViewModel(
     private val verGastos: VerGastos) : ViewModel()
 {
     private val pageSize = 1
+    private var siguientePagina = 0
     private val _uiState = MutableStateFlow<UiState<List<Gasto>>>(UiState.Idle)
     val uiState: StateFlow<UiState<List<Gasto>>> = _uiState.asStateFlow()
+
+    private val _pagina = MutableStateFlow<Page<Gasto>?>(null)
+    val pagina = _pagina.asStateFlow()
 
     private val _cargandoMas = MutableStateFlow(false)
     val cargandoMas = _cargandoMas.asStateFlow()
@@ -30,20 +35,30 @@ class VerGastosViewModel(
     private val _errorAlCargarMas = MutableStateFlow<String?>(null)
     val errorAlCargarMas = _errorAlCargarMas.asStateFlow()
 
-    fun cargar() {
-        if (_uiState.value is UiState.Cargando || _cargandoMas.value) return
+    fun cargar()
+    {
+        if (_uiState.value is UiState.Cargando || _cargandoMas.value)
+            return
+
+        _pagina.value = null
 
         _uiState.value = UiState.Cargando
         _hayMas.value = true
         _errorAlCargarMas.value = null
+        siguientePagina = 0
 
         viewModelScope.launch {
             try
             {
-                val gastos = verGastos(limit = pageSize, offset = 0)
+                val page = verGastos(
+                    number = 0,
+                    size = pageSize)
 
-                _hayMas.value = gastos.size == pageSize
-                _uiState.value = UiState.Exito(gastos)
+                _pagina.value = page
+
+                siguientePagina = page.number + 1
+                _hayMas.value = page.hasNext
+                _uiState.value = UiState.Exito(page.content)
             }
             catch (e: CancellationException)
             {
@@ -53,8 +68,7 @@ class VerGastosViewModel(
             catch (e: Exception)
             {
                 _uiState.value = UiState.Error(
-                    e.message ?: "Error al cargar"
-                )
+                    e.message ?: "Error al cargar")
             }
         }
     }
@@ -63,7 +77,8 @@ class VerGastosViewModel(
     {
         val state = _uiState.value
         if (state !is UiState.Exito) return
-        if (_cargandoMas.value || !_hayMas.value) return
+        if (_cargandoMas.value || !_hayMas.value)
+            return
 
         _cargandoMas.value = true
         _errorAlCargarMas.value = null
@@ -71,14 +86,18 @@ class VerGastosViewModel(
         viewModelScope.launch {
             try
             {
-                val nuevos = verGastos(
-                    limit = pageSize,
-                    offset = state.data.size)
+                val page = verGastos(
+                    number = siguientePagina,
+                    size = pageSize)
 
-                _hayMas.value = nuevos.size == pageSize
-                _uiState.value = UiState.Exito(state.data + nuevos)
-            }
-            catch (e: CancellationException) {
+                _pagina.value = page
+
+                siguientePagina = page.number + 1
+                _hayMas.value = page.hasNext
+                _uiState.value = UiState.Exito(
+                    state.data + page.content)
+            } catch (e: CancellationException)
+            {
                 throw e
             }
             catch (e: Exception)

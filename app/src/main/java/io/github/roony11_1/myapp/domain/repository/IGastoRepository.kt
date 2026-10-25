@@ -1,5 +1,6 @@
 package io.github.roony11_1.myapp.domain.repository
 
+import io.github.roony11_1.myapp.core.pagination.Page
 import io.github.roony11_1.myapp.domain.model.Gasto
 
 interface IGastoRepository
@@ -7,5 +8,5 @@ interface IGastoRepository
     suspend fun save(gasto: Gasto): Gasto
     suspend fun findAll(): List<Gasto>
     suspend fun findById(id: Long): Gasto?
-    suspend fun findPage(limit: Int, offset: Int): List<Gasto>
+    suspend fun findPage(number: Int, size: Int): Page<Gasto>
 }

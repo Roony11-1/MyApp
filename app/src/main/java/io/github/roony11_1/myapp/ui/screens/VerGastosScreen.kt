@@ -35,94 +35,183 @@ fun VerGastosScreen(
     onGastoClick: (Long) -> Unit)
 {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
+    val pagina by viewModel.pagina.collectAsStateWithLifecycle()
     val cargandoMas by viewModel.cargandoMas.collectAsStateWithLifecycle()
     val hayMas by viewModel.hayMas.collectAsStateWithLifecycle()
     val errorAlCargarMas by
     viewModel.errorAlCargarMas.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) { viewModel.cargar() }
+    LaunchedEffect(Unit) {
+        viewModel.cargar()
+    }
 
-    Column(modifier = modifier.fillMaxSize())
+    Column(
+        modifier = modifier.fillMaxSize())
     {
         Text(
             text = "Gastos",
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(24.dp))
 
-        when (val state = uiState) {
-            is UiState.Idle -> Unit
-            is UiState.Cargando -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+        when (val state = uiState)
+        {
+            UiState.Idle -> Unit
+
+            UiState.Cargando -> {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center)
+                {
+                    CircularProgressIndicator()
+                }
             }
-            is UiState.Error -> Text(
-                text = state.mensaje,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(24.dp))
+
+            is UiState.Error -> {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp))
+                {
+                    Text(
+                        text = state.mensaje,
+                        color = MaterialTheme.colorScheme.error)
+
+                    Button(
+                        onClick = { viewModel.cargar() })
+                    {
+                        Text("Reintentar")
+                    }
+                }
+            }
+
             is UiState.Exito -> {
+                pagina?.let { page ->
+                    Column(
+                        modifier = Modifier.padding(
+                            horizontal = 24.dp,
+                            vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp))
+                    {
+                        Text(
+                            text = "${state.data.size} de " +
+                                    "${page.totalElements} gastos cargados",
+                            style = MaterialTheme.typography.bodyMedium)
+
+                        if (page.totalPages > 0)
+                        {
+                            Text(
+                                text = "Páginas cargadas: " +
+                                        "${page.number + 1} de ${page.totalPages}" +
+                                        " · ${page.size} por página",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+
                 if (state.data.isEmpty())
                 {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center)
                     {
-                        Text("No hay gastos registrados", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = "No hay gastos registrados",
+                            style = MaterialTheme.typography.bodyLarge)
                     }
                 }
                 else
                 {
                     LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentPadding = PaddingValues(
+                            horizontal = 16.dp,
+                            vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp))
                     {
-                        items(state.data, key = { it.id }) { gasto ->
+                        items(
+                            items = state.data,
+                            key = { it.id }) { gasto ->
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { onGastoClick(gasto.id) },
+                                    .clickable {
+                                        onGastoClick(gasto.id)
+                                    },
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant))
+                                    containerColor =
+                                        MaterialTheme.colorScheme.surfaceVariant))
                             {
-                                Column(Modifier.padding(16.dp))
+                                Column(
+                                    modifier = Modifier.padding(16.dp))
                                 {
-                                    Text(gasto.descripcion, style = MaterialTheme.typography.titleMedium)
                                     Text(
-                                        formatearMonto(gasto.monto),
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        text = gasto.descripcion,
+                                        style =
+                                            MaterialTheme.typography.titleMedium)
+
+                                    Text(
+                                        text = formatearMonto(gasto.monto),
+                                        style =
+                                            MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }
 
                         item {
-                            errorAlCargarMas?.let { mensaje ->
-                                Text(
-                                    text = mensaje,
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.padding(vertical = 8.dp)
-                                )
-                            }
-
-                            if (hayMas)
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp))
                             {
-                                Button(
-                                    onClick = { viewModel.cargarMas() },
-                                    enabled = !cargandoMas,
-                                    modifier = Modifier.fillMaxWidth())
+                                errorAlCargarMas?.let { mensaje ->
+                                    Text(
+                                        text = mensaje,
+                                        color = MaterialTheme.colorScheme.error)
+                                }
+
+                                if (hayMas)
                                 {
-                                    if (cargandoMas)
+                                    Button(
+                                        onClick = { viewModel.cargarMas() },
+                                        enabled = !cargandoMas,
+                                        modifier = Modifier.fillMaxWidth())
                                     {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            strokeWidth = 2.dp,
-                                            color = MaterialTheme.colorScheme.onPrimary)
+                                        if (cargandoMas)
+                                        {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(20.dp),
+                                                strokeWidth = 2.dp,
+                                                color =
+                                                    MaterialTheme.colorScheme.onPrimary)
+                                        }
+                                        else
+                                        {
+                                            Text(
+                                                text =
+                                                    if (errorAlCargarMas != null)
+                                                        "Reintentar"
+                                                    else
+                                                        "Cargar más")
+                                        }
                                     }
-                                    else
-                                    {
-                                        Text(
-                                            if (errorAlCargarMas != null)
-                                                "Reintentar"
-                                            else
-                                                "Cargar más")
-                                    }
+                                }
+                                else
+                                {
+                                    Text(
+                                        text = "Todos los gastos están cargados",
+                                        style =
+                                            MaterialTheme.typography.bodySmall,
+                                        color =
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .align(Alignment.CenterHorizontally)
+                                            .padding(vertical = 16.dp))
                                 }
                             }
                         }

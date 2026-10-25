@@ -1,6 +1,7 @@
 
 package io.github.roony11_1.myapp.data.local.repository
 
+import io.github.roony11_1.myapp.core.pagination.Page
 import io.github.roony11_1.myapp.data.local.dao.IGastoDao
 import io.github.roony11_1.myapp.domain.model.Gasto
 import io.github.roony11_1.myapp.domain.repository.IGastoRepository
@@ -26,5 +27,5 @@ class GastoRepository(private val dao: IGastoDao) : IGastoRepository
 
     override suspend fun findById(id: Long): Gasto? = dao.selectById(id)
 
-    override suspend fun findPage(limit: Int, offset: Int): List<Gasto> = dao.selectPage(limit, offset)
+    override suspend fun findPage(number: Int, size: Int): Page<Gasto> = dao.selectPage(number, size)
 }
