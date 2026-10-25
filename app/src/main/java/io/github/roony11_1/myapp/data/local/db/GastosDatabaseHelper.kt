@@ -61,6 +61,24 @@ class GastosDatabaseHelper(context: Context)
             CREATE INDEX idx_gasto_fecha_hora_id
             ON gasto (fecha_hora DESC, id DESC)
         """.trimIndent())
+
+        db.execSQL(
+            "INSERT INTO cuenta (id, nombre) VALUES (?, ?)",
+            arrayOf<Any>(1L, "Cuenta por defecto")
+        )
+
+        val categorias = listOf(
+            1L to "Cuentas",
+            2L to "Alimentación",
+            3L to "Gasto hormiga",
+            4L to "Transporte"
+        )
+
+        categorias.forEach { (id, nombre) ->
+            db.execSQL(
+                "INSERT INTO categoria (id, nombre) VALUES (?, ?)",
+                arrayOf<Any>(id, nombre))
+        }
     }
     companion object
     {

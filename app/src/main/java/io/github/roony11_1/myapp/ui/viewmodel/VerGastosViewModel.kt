@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 class VerGastosViewModel(
     private val verGastos: VerGastos) : ViewModel()
 {
-    private val pageSize = 1
+    private val pageSize = 20
     private var siguientePagina = 0
     private val _uiState = MutableStateFlow<UiState<List<Gasto>>>(UiState.Idle)
     val uiState: StateFlow<UiState<List<Gasto>>> = _uiState.asStateFlow()

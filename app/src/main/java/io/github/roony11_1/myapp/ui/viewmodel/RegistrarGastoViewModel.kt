@@ -9,22 +9,41 @@ import io.github.roony11_1.myapp.core.di.AppContainer
 import io.github.roony11_1.myapp.domain.model.Categoria
 import io.github.roony11_1.myapp.domain.model.Cuenta
 import io.github.roony11_1.myapp.domain.model.Gasto
+import io.github.roony11_1.myapp.domain.repository.ICategoriaRepository
 import io.github.roony11_1.myapp.domain.usecase.RegistrarGasto
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class RegistrarGastoViewModel(
-    private val registrarGasto: RegistrarGasto): ViewModel()
+    private val registrarGasto: RegistrarGasto,
+    private val categoriaRepository: ICategoriaRepository): ViewModel()
 {
     private val _uiState = MutableStateFlow<UiState<Gasto>>(UiState.Idle)
     val uiState: StateFlow<UiState<Gasto>> = _uiState.asStateFlow()
-    val categorias = listOf<Categoria>(
-        Categoria(1L, "Cuentas"),
-        Categoria(2L, "Alimentación"),
-        Categoria(3L, "Gasto hormiga"),
-        Categoria(4L, "Transporte"))
+
+    private val _categorias = MutableStateFlow<List<Categoria>>(emptyList())
+    val categorias = _categorias.asStateFlow()
+
+    init
+    {
+        viewModelScope.launch {
+            try
+            {
+                _categorias.value = categoriaRepository.findAll()
+            }
+            catch (e: CancellationException)
+            {
+                throw e
+            }
+            catch (e: Exception)
+            {
+                _uiState.value = UiState.Error(e.message ?: "Error al cargar categorías")
+            }
+        }
+    }
 
     val cuentas = listOf<Cuenta>(Cuenta(1L, "Cuenta por defecto"))
 
@@ -61,7 +80,8 @@ class RegistrarGastoViewModel(
                 RegistrarGastoViewModel(
                     registrarGasto = RegistrarGasto(
                         gastoRepository = container.gastoRepository,
-                        clock = container.clock))
+                        clock = container.clock),
+                    container.categoriaRepository)
             }
         }
     }

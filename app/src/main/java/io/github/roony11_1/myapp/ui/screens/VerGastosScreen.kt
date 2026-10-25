@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.roony11_1.myapp.core.util.formatearFechaHora
 import io.github.roony11_1.myapp.core.util.formatearMonto
 import io.github.roony11_1.myapp.ui.viewmodel.UiState
 import io.github.roony11_1.myapp.ui.viewmodel.VerGastosViewModel
@@ -148,18 +149,26 @@ fun VerGastosScreen(
                                         MaterialTheme.colorScheme.surfaceVariant))
                             {
                                 Column(
-                                    modifier = Modifier.padding(16.dp))
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp))
                                 {
                                     Text(
                                         text = gasto.descripcion,
-                                        style =
-                                            MaterialTheme.typography.titleMedium)
+                                        style = MaterialTheme.typography.titleMedium)
 
                                     Text(
                                         text = formatearMonto(gasto.monto),
-                                        style =
-                                            MaterialTheme.typography.bodyLarge,
+                                        style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.primary)
+
+                                    Text(
+                                        text = formatearFechaHora(gasto.fechaHora),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .align(Alignment.End)
+                                            .padding(top = 8.dp))
                                 }
                             }
                         }

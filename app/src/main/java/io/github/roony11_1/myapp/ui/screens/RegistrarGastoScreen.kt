@@ -41,6 +41,8 @@ fun RegistrarGastoScreen(
         mutableStateOf(setOf<Long>(3L))
     }
 
+    val categorias by viewModel.categorias.collectAsStateWithLifecycle()
+
     var cuentaSeleccionadaId by remember {
         mutableStateOf<Long>(1L)
     }
@@ -84,7 +86,7 @@ fun RegistrarGastoScreen(
 
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            viewModel.categorias.forEach { categoria ->
+            categorias.forEach { categoria ->
                 FilterChip(
                     selected = categoria.id in categoriasSeleccionadas,
                     onClick = {
@@ -135,19 +137,19 @@ fun RegistrarGastoScreen(
                 if (montoDouble == null || montoDouble <= 0)
                     return@Button
 
-                val cuenta = viewModel.cuentas.find {
+                val cuentaGuardar = viewModel.cuentas.find {
                     it.id == cuentaSeleccionadaId
                 } ?: return@Button
 
-                val categorias = viewModel.categorias.filter {
+                val categoriasGuardar = categorias.filter {
                     it.id in categoriasSeleccionadas
                 }
 
                 viewModel.onGuardar(
                     montoDouble,
                     descripcion,
-                    cuenta,
-                    categorias)
+                    cuentaGuardar,
+                    categoriasGuardar)
             },
             enabled = uiState !is UiState.Cargando,
             modifier = Modifier.fillMaxWidth())
