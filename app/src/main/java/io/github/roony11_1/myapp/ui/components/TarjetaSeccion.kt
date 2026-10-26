@@ -29,6 +29,7 @@ fun TarjetaSeccion(
     modifier: Modifier = Modifier,
     descripcion: String? = null,
     acento: Color = MaterialTheme.colorScheme.primary,
+    accion: (@Composable () -> Unit)? = null,
     contenido: @Composable ColumnScope.() -> Unit)
 {
     Surface(
@@ -62,7 +63,9 @@ fun TarjetaSeccion(
                         modifier = Modifier.size(19.dp))
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp))
                 {
                     Text(
                         text = titulo,
@@ -76,6 +79,8 @@ fun TarjetaSeccion(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+
+                accion?.invoke()
             }
 
             contenido()

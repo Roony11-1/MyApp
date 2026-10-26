@@ -5,11 +5,11 @@ import android.database.sqlite.SQLiteDatabase
 import io.github.roony11_1.myapp.core.pagination.Page
 import io.github.roony11_1.myapp.data.local.db.GastosDatabaseHelper
 import io.github.roony11_1.myapp.domain.model.Categoria
+import io.github.roony11_1.myapp.domain.model.Comercio
 import io.github.roony11_1.myapp.domain.model.Cuenta
+import io.github.roony11_1.myapp.domain.model.Etiqueta
 import io.github.roony11_1.myapp.domain.model.Gasto
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 interface IGastoDao
@@ -17,11 +17,13 @@ interface IGastoDao
     suspend fun insert(gasto: Gasto): Long
     suspend fun selectAll(): List<Gasto>
     suspend fun selectById(id: Long): Gasto?
-    suspend fun selectPage(limit: Int, offset: Int): Page<Gasto>
+    suspend fun selectPage(number: Int, size: Int): Page<Gasto>
 }
 
 class SqliteGastoDao(
-    private val helper: GastosDatabaseHelper) : IGastoDao
+    private val helper: GastosDatabaseHelper,
+    private val comercioDao: IComercioDao,
+    private val etiquetaDao: IEtiquetaDao) : IGastoDao
 {
 
     override suspend fun insert(gasto: Gasto): Long =
@@ -32,11 +34,26 @@ class SqliteGastoDao(
             db.beginTransaction()
             try
             {
+                val comercioId = gasto.comercio?.let {
+                    comercioDao.obtenerOCrear(db, it.nombre)
+                }
+
                 val values = ContentValues().apply {
                     put("monto", gasto.monto)
                     put("descripcion", gasto.descripcion)
                     put("cuenta_id", gasto.cuenta.id)
                     put("fecha_hora", gasto.fechaHora)
+
+                    if (comercioId != null)
+                        put("comercio_id", comercioId)
+                    else
+                        putNull("comercio_id")
+
+                    val notas = gasto.notasLimpia
+                    if (notas != null)
+                        put("notas", notas)
+                    else
+                        putNull("notas")
                 }
 
                 val id = db.insertOrThrow("gasto", null, values)
@@ -51,6 +68,23 @@ class SqliteGastoDao(
                         "gasto_categoria",
                         null,
                         relacion)
+                }
+
+                gasto.etiquetas.forEach { etiqueta ->
+                    val etiquetaId = etiquetaDao.obtenerOCrear(
+                        db,
+                        etiqueta.nombre)
+
+                    val relacion = ContentValues().apply {
+                        put("gasto_id", id)
+                        put("etiqueta_id", etiquetaId)
+                    }
+
+                    db.insertWithOnConflict(
+                        "gasto_etiqueta",
+                        null,
+                        relacion,
+                        SQLiteDatabase.CONFLICT_IGNORE)
                 }
 
                 db.setTransactionSuccessful()
@@ -81,11 +115,11 @@ class SqliteGastoDao(
         }
 
     override suspend fun selectPage(
-        limit: Int,
-        offset: Int): Page<Gasto> = withContext(Dispatchers.IO)
+        number: Int,
+        size: Int): Page<Gasto> = withContext(Dispatchers.IO)
     {
-        require(limit >= 0) { "El número de página no puede ser negativo" }
-        require(offset > 0) { "El tamaño de página debe ser positivo" }
+        require(number >= 0) { "El número de página no puede ser negativo" }
+        require(size > 0) { "El tamaño de página debe ser positivo" }
 
         val db = helper.readableDatabase
 
@@ -106,16 +140,16 @@ class SqliteGastoDao(
                     LIMIT ? OFFSET ?
                 """.trimIndent(),
                 args = arrayOf(
-                    offset.toString(),
-                    (limit.toLong() * offset).toString()))
+                    size.toString(),
+                    (number.toLong() * size).toString()))
 
             val page = Page(
                 content = content,
                 totalElements = totalElements,
                 totalPages = (
-                        (totalElements + offset - 1) / offset).toInt(),
-                number = limit,
-                size = offset)
+                        (totalElements + size - 1) / size).toInt(),
+                number = number,
+                size = size)
 
             db.setTransactionSuccessful()
             page
@@ -139,15 +173,30 @@ class SqliteGastoDao(
                     g.descripcion,
                     g.fecha_hora,
                     c.id AS cuenta_id,
-                    c.nombre AS cuenta_nombre
+                    c.nombre AS cuenta_nombre,
+                    g.notas,
+                    m.id AS comercio_id,
+                    m.nombre AS comercio_nombre
                 FROM gasto g
                 INNER JOIN cuenta c ON c.id = g.cuenta_id
+                LEFT JOIN comercio m ON m.id = g.comercio_id
                 $suffix
             """.trimIndent(),
             args).use { cursor ->
             buildList {
                 while (cursor.moveToNext())
                 {
+                    val comercio = if (cursor.isNull(7))
+                    {
+                        null
+                    }
+                    else
+                    {
+                        Comercio(
+                            id = cursor.getLong(7),
+                            nombre = cursor.getString(8))
+                    }
+
                     add(
                         FilaGasto(
                             id = cursor.getLong(0),
@@ -156,12 +205,21 @@ class SqliteGastoDao(
                             fechaHora = cursor.getLong(3),
                             cuenta = Cuenta(
                                 id = cursor.getLong(4),
-                                nombre = cursor.getString(5))))
+                                nombre = cursor.getString(5)),
+                            notas = if (cursor.isNull(6))
+                                null
+                            else
+                                cursor.getString(6),
+                            comercio = comercio))
                 }
             }
         }
 
         val categoriasPorGasto = leerCategorias(
+            db,
+            filas.map { it.id })
+
+        val etiquetasPorGasto = leerEtiquetas(
             db,
             filas.map { it.id })
 
@@ -172,7 +230,10 @@ class SqliteGastoDao(
                 descripcion = fila.descripcion,
                 cuenta = fila.cuenta,
                 categorias = categoriasPorGasto[fila.id].orEmpty(),
-                fechaHora = fila.fechaHora)
+                fechaHora = fila.fechaHora,
+                comercio = fila.comercio,
+                etiquetas = etiquetasPorGasto[fila.id].orEmpty(),
+                notas = fila.notas)
         }
     }
 
@@ -211,70 +272,47 @@ class SqliteGastoDao(
         return resultado
     }
 
+    private fun leerEtiquetas(
+        db: SQLiteDatabase,
+        gastosIds: List<Long>): Map<Long, List<Etiqueta>>
+    {
+        val resultado = mutableMapOf<Long, MutableList<Etiqueta>>()
+
+        gastosIds.chunked(500).forEach { lote ->
+            val placeholders = lote.joinToString(",") { "?" }
+
+            db.rawQuery(
+                """
+                    SELECT ge.gasto_id, e.id, e.nombre
+                    FROM gasto_etiqueta ge
+                    INNER JOIN etiqueta e ON e.id = ge.etiqueta_id
+                    WHERE ge.gasto_id IN ($placeholders)
+                    ORDER BY ge.gasto_id, e.id
+                """.trimIndent(),
+                lote.map { it.toString() }.toTypedArray()).use { cursor ->
+                while (cursor.moveToNext())
+                {
+                    val gastoId = cursor.getLong(0)
+                    val etiqueta = Etiqueta(
+                        id = cursor.getLong(1),
+                        nombre = cursor.getString(2))
+
+                    resultado.getOrPut(gastoId) {
+                        mutableListOf()
+                    }.add(etiqueta)
+                }
+            }
+        }
+
+        return resultado
+    }
+
     private data class FilaGasto(
         val id: Long,
         val monto: Double,
         val descripcion: String,
         val fechaHora: Long,
-        val cuenta: Cuenta)
+        val cuenta: Cuenta,
+        val notas: String?,
+        val comercio: Comercio?)
 }
-
-/*class InMemoryGastoDao : IGastoDao
-{
-    private val mutex = Mutex()
-    private val gastos = mutableListOf<Gasto>()
-    private var nextId = 1L
-
-    override suspend fun insert(gasto: Gasto): Long = mutex.withLock {
-        val id = nextId++
-
-        gastos.add(
-            Gasto(
-                id = id,
-                monto = gasto.monto,
-                descripcion = gasto.descripcion,
-                cuenta = gasto.cuenta,
-                categorias = gasto.categorias,
-                fechaHora = gasto.fechaHora))
-        id
-    }
-
-    override suspend fun selectAll(): List<Gasto> = mutex.withLock {
-        gastos.toList()
-    }
-
-    override suspend fun selectById(id: Long): Gasto? = mutex.withLock {
-        gastos.firstOrNull { it.id == id }
-    }
-
-    override suspend fun selectPage(
-        number: Int,
-        size: Int): Page<Gasto> = mutex.withLock {
-        require(number >= 0) { "El número de página no puede ser negativo" }
-        require(size > 0) { "El tamaño de página debe ser positivo" }
-
-        val totalElements = gastos.size.toLong()
-        val offset = number.toLong() * size
-
-        val content = if (offset >= totalElements)
-        {
-            emptyList()
-        }
-        else
-        {
-            gastos
-                .sortedWith(
-                    compareByDescending<Gasto> { it.fechaHora }
-                        .thenByDescending { it.id })
-                .drop(offset.toInt())
-                .take(size)
-        }
-
-        Page(
-            content = content,
-            totalElements = totalElements,
-            totalPages = ((totalElements + size - 1) / size).toInt(),
-            number = number,
-            size = size)
-    }
-}*/

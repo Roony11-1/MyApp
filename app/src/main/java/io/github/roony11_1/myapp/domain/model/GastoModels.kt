@@ -20,16 +20,42 @@ data class Categoria(
     }
 }
 
+data class Comercio(
+    val id: Long = 0L,
+    val nombre: String)
+{
+    init
+    {
+        require(nombre.isNotBlank()) { "El nombre es obligatorio" }
+    }
+}
+
+data class Etiqueta(
+    val id: Long = 0L,
+    val nombre: String)
+{
+    init
+    {
+        require(nombre.isNotBlank()) { "La etiqueta no puede estar vacía" }
+    }
+}
+
 class Gasto(
     val id: Long = 0L,
     val monto: Double,
     val descripcion: String,
     val cuenta: Cuenta,
     categorias: List<Categoria>,
-    val fechaHora: Long)
+    val fechaHora: Long,
+    val comercio: Comercio? = null,
+    val etiquetas: List<Etiqueta> = emptyList(),
+    val notas: String? = null)
 {
-    val categorias: List<Categoria> = categorias
-        .distinctBy { it.id }
+    /** Categorías sin duplicados por id. */
+    val categorias: List<Categoria> = categorias.distinctBy { it.id }
+
+    /** Notas normalizadas solo en extremos; el contenido se respeta. */
+    val notasLimpia: String? = notas?.trim()?.takeIf { it.isNotEmpty() }
 
     init
     {

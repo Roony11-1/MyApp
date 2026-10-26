@@ -54,9 +54,12 @@ fun SelectorFechaHora(
     fechaHora: Long,
     onFechaHoraChange: (Long) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true)
+    enabled: Boolean = true,
+    expandido: Boolean? = null,
+    onExpandirToggle: (() -> Unit)? = null)
 {
-    var expandido by remember { mutableStateOf(false) }
+    var expandidoInterno by remember { mutableStateOf(false) }
+    val estaExpandido = expandido ?: expandidoInterno
     var mostrarSelectorFecha by remember { mutableStateOf(false) }
     var mostrarSelectorHora by remember { mutableStateOf(false) }
 
@@ -78,7 +81,12 @@ fun SelectorFechaHora(
                     .fillMaxWidth()
                     .clickable(
                         enabled = enabled,
-                        onClick = { expandido = !expandido })
+                        onClick = {
+                            if (expandido == null)
+                                expandidoInterno = !expandidoInterno
+                            else
+                                onExpandirToggle?.invoke()
+                        })
                     .padding(20.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp))
@@ -115,16 +123,16 @@ fun SelectorFechaHora(
                 }
 
                 Icon(
-                    imageVector = if (expandido)
+                    imageVector = if (estaExpandido)
                         Icons.Rounded.ExpandLess
                     else
                         Icons.Rounded.ExpandMore,
-                    contentDescription = if (expandido) "Ocultar" else "Cambiar",
+                    contentDescription = if (estaExpandido) "Ocultar" else "Cambiar",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp))
             }
 
-            AnimatedVisibility(visible = expandido)
+            AnimatedVisibility(visible = estaExpandido)
             {
                 Row(
                     modifier = Modifier

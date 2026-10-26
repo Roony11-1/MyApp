@@ -1,7 +1,9 @@
 package io.github.roony11_1.myapp.domain.usecase
 
 import io.github.roony11_1.myapp.domain.model.Categoria
+import io.github.roony11_1.myapp.domain.model.Comercio
 import io.github.roony11_1.myapp.domain.model.Cuenta
+import io.github.roony11_1.myapp.domain.model.Etiqueta
 import io.github.roony11_1.myapp.domain.model.Gasto
 import io.github.roony11_1.myapp.domain.repository.IGastoRepository
 
@@ -13,7 +15,10 @@ class RegistrarGasto(
         descripcion: String,
         cuenta: Cuenta,
         categorias: List<Categoria>,
-        fechaHora: Long): Gasto
+        fechaHora: Long,
+        comercio: Comercio? = null,
+        etiquetas: List<Etiqueta> = emptyList(),
+        notas: String? = null): Gasto
     {
         require(monto > 0) { "El monto debe ser positivo" }
         require(descripcion.isNotBlank()) { "La descripción es obligatoria" }
@@ -24,7 +29,10 @@ class RegistrarGasto(
             descripcion = descripcion,
             cuenta = cuenta,
             categorias = categorias,
-            fechaHora = fechaHora)
+            fechaHora = fechaHora,
+            comercio = comercio,
+            etiquetas = etiquetas,
+            notas = notas)
 
         return gastoRepository.save(gasto)
     }

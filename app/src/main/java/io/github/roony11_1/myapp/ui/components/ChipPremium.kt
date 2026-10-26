@@ -21,10 +21,12 @@ fun ChipPremium(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    icono: ImageVector? = null)
+    icono: ImageVector? = null,
+    iconoFinal: ImageVector? = null)
 {
     val colors = MaterialTheme.colorScheme
     val iconoInicial = icono
+    val iconoTrailing = iconoFinal
 
     FilterChip(
         selected = seleccionado,
@@ -59,6 +61,19 @@ fun ChipPremium(
             }
 
             else -> null
+        },
+        trailingIcon = if (iconoTrailing != null)
+        {
+            {
+                Icon(
+                    imageVector = iconoTrailing,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp))
+            }
+        }
+        else
+        {
+            null
         },
         shape = MaterialTheme.shapes.small,
         colors = FilterChipDefaults.filterChipColors(
