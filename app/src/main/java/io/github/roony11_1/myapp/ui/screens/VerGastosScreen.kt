@@ -1,13 +1,15 @@
 package io.github.roony11_1.myapp.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +19,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,10 +33,7 @@ import io.github.roony11_1.myapp.core.util.claveDia
 import io.github.roony11_1.myapp.core.util.formatearEncabezadoDia
 import io.github.roony11_1.myapp.core.util.formatearFechaHora
 import io.github.roony11_1.myapp.core.util.formatearMonto
-import io.github.roony11_1.myapp.ui.viewmodel.UiState
 import io.github.roony11_1.myapp.ui.viewmodel.VerGastosViewModel
-
-
 
 @Composable
 fun VerGastosScreen(
@@ -41,12 +41,7 @@ fun VerGastosScreen(
     viewModel: VerGastosViewModel,
     onGastoClick: (Long) -> Unit)
 {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val pagina by viewModel.pagina.collectAsStateWithLifecycle()
-    val cargandoMas by viewModel.cargandoMas.collectAsStateWithLifecycle()
-    val hayMas by viewModel.hayMas.collectAsStateWithLifecycle()
-    val errorAlCargarMas by
-    viewModel.errorAlCargarMas.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.cargar()
@@ -58,13 +53,18 @@ fun VerGastosScreen(
         Text(
             text = "Gastos",
             style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(24.dp))
+            modifier = Modifier.padding(
+                start = 24.dp,
+                end = 24.dp,
+                top = 24.dp,
+                bottom = 12.dp))
 
-        when (val state = uiState)
+        val pagina = state.pagina
+        val error = state.error
+
+        when
         {
-            UiState.Idle -> Unit
-
-            UiState.Cargando -> {
+            state.cargandoInicial -> {
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -75,49 +75,59 @@ fun VerGastosScreen(
                 }
             }
 
-            is UiState.Error -> {
+            error != null && state.gastos.isEmpty() -> {
                 Column(
                     modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp))
+                    verticalArrangement = Arrangement.spacedBy(12.dp))
                 {
                     Text(
-                        text = state.mensaje,
+                        text = error,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.error)
 
                     Button(
-                        onClick = { viewModel.cargar() })
+                        onClick = { viewModel.cargar() },
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.height(48.dp))
                     {
-                        Text("Reintentar")
+                        Text(
+                            text = "Reintentar",
+                            style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
 
-            is UiState.Exito -> {
-                pagina?.let { page ->
+            pagina != null -> {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceContainer)
+                {
                     Column(
-                        modifier = Modifier.padding(
-                            horizontal = 24.dp,
-                            vertical = 8.dp),
+                        modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp))
                     {
                         Text(
-                            text = "${state.data.size} de " +
-                                    "${page.totalElements} gastos cargados",
-                            style = MaterialTheme.typography.bodyMedium)
+                            text = "${state.gastos.size} de " +
+                                    "${pagina.totalElements} gastos cargados",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface)
 
-                        if (page.totalPages > 0)
+                        if (pagina.totalPages > 0)
                         {
                             Text(
                                 text = "Páginas cargadas: " +
-                                        "${page.number + 1} de ${page.totalPages}" +
-                                        " · ${page.size} por página",
+                                        "${pagina.number + 1} de ${pagina.totalPages}" +
+                                        " · ${pagina.size} por página",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
 
-                if (state.data.isEmpty())
+                if (state.sinResultados)
                 {
                     Box(
                         modifier = Modifier
@@ -127,15 +137,16 @@ fun VerGastosScreen(
                     {
                         Text(
                             text = "No hay gastos registrados",
-                            style = MaterialTheme.typography.bodyLarge)
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 else
                 {
                     // La BD ya entrega ordenado por fecha_hora DESC,
                     // y groupBy preserva el orden de aparición de las claves.
-                    val gastosAgrupados = remember(state.data) {
-                        state.data.groupBy { claveDia(it.fechaHora) }
+                    val gastosAgrupados = remember(state.gastos) {
+                        state.gastos.groupBy { claveDia(it.fechaHora) }
                     }
 
                     LazyColumn(
@@ -157,44 +168,68 @@ fun VerGastosScreen(
                                         .fillMaxWidth()
                                         .background(
                                             MaterialTheme.colorScheme.background)
-                                        .padding(vertical = 8.dp))
+                                        .padding(
+                                            start = 4.dp,
+                                            end = 4.dp,
+                                            top = 12.dp,
+                                            bottom = 8.dp))
                             }
 
                             items(
                                 items = gastosDelDia,
                                 key = { it.id }) { gasto ->
                                 Card(
+                                    onClick = { onGastoClick(gasto.id) },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 4.dp)
-                                        .clickable {
-                                            onGastoClick(gasto.id)
-                                        },
+                                        .padding(vertical = 4.dp),
+                                    shape = MaterialTheme.shapes.large,
                                     colors = CardDefaults.cardColors(
                                         containerColor =
-                                            MaterialTheme.colorScheme.surfaceVariant))
+                                            MaterialTheme.colorScheme.surfaceContainerLow),
+                                    elevation = CardDefaults.cardElevation(
+                                        defaultElevation = 0.dp),
+                                    border = BorderStroke(
+                                        width = 1.dp,
+                                        color =
+                                            MaterialTheme.colorScheme.outlineVariant))
                                 {
-                                    Column(
+                                    Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(16.dp))
+                                            .padding(
+                                                horizontal = 20.dp,
+                                                vertical = 16.dp),
+                                        horizontalArrangement =
+                                            Arrangement.spacedBy(16.dp),
+                                        verticalAlignment = Alignment.Top)
                                     {
-                                        Text(
-                                            text = gasto.descripcion,
-                                            style = MaterialTheme.typography.titleMedium)
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement =
+                                                Arrangement.spacedBy(6.dp))
+                                        {
+                                            Text(
+                                                text = gasto.descripcion,
+                                                style = MaterialTheme.typography
+                                                    .titleMedium,
+                                                color = MaterialTheme.colorScheme
+                                                    .onSurface)
+
+                                            Text(
+                                                text =
+                                                    formatearFechaHora(gasto.fechaHora),
+                                                style =
+                                                    MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme
+                                                    .onSurfaceVariant)
+                                        }
 
                                         Text(
                                             text = formatearMonto(gasto.monto),
-                                            style = MaterialTheme.typography.bodyLarge,
+                                            style = MaterialTheme.typography
+                                                .titleLarge,
                                             color = MaterialTheme.colorScheme.primary)
-
-                                        Text(
-                                            text = formatearFechaHora(gasto.fechaHora),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier
-                                                .align(Alignment.End)
-                                                .padding(top = 8.dp))
                                     }
                                 }
                             }
@@ -207,35 +242,43 @@ fun VerGastosScreen(
                                     .padding(top = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp))
                             {
-                                errorAlCargarMas?.let { mensaje ->
+                                error?.let { mensaje ->
                                     Text(
                                         text = mensaje,
+                                        style =
+                                            MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.error)
                                 }
 
-                                if (hayMas)
+                                if (state.hayMas)
                                 {
                                     Button(
                                         onClick = { viewModel.cargarMas() },
-                                        enabled = !cargandoMas,
-                                        modifier = Modifier.fillMaxWidth())
+                                        enabled = !state.cargandoMas,
+                                        shape = MaterialTheme.shapes.medium,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(48.dp))
                                     {
-                                        if (cargandoMas)
+                                        if (state.cargandoMas)
                                         {
                                             CircularProgressIndicator(
                                                 modifier = Modifier.size(20.dp),
                                                 strokeWidth = 2.dp,
                                                 color =
-                                                    MaterialTheme.colorScheme.onPrimary)
+                                                    MaterialTheme.colorScheme
+                                                        .onPrimary)
                                         }
                                         else
                                         {
                                             Text(
                                                 text =
-                                                    if (errorAlCargarMas != null)
+                                                    if (error != null)
                                                         "Reintentar"
                                                     else
-                                                        "Cargar más")
+                                                        "Cargar más",
+                                                style = MaterialTheme.typography
+                                                    .labelLarge)
                                         }
                                     }
                                 }

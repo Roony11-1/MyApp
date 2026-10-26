@@ -13,107 +13,101 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class VerGastosViewModel(
-    private val verGastos: VerGastos) : ViewModel()
+data class VerGastosUiState(
+    val gastos: List<Gasto> = emptyList(),
+    val pagina: Page<Gasto>? = null,
+    val cargando: Boolean = false,
+    val error: String? = null)
 {
-    private val pageSize = 20
-    private var siguientePagina = 0
-    private val _uiState = MutableStateFlow<UiState<List<Gasto>>>(UiState.Idle)
-    val uiState: StateFlow<UiState<List<Gasto>>> = _uiState.asStateFlow()
+    val cargandoInicial: Boolean get() = cargando && gastos.isEmpty()
 
-    private val _pagina = MutableStateFlow<Page<Gasto>?>(null)
-    val pagina = _pagina.asStateFlow()
+    val cargandoMas: Boolean get() = cargando && gastos.isNotEmpty()
 
-    private val _cargandoMas = MutableStateFlow(false)
-    val cargandoMas = _cargandoMas.asStateFlow()
+    val hayMas: Boolean get() = pagina?.hasNext ?: true
 
-    private val _hayMas = MutableStateFlow(true)
-    val hayMas = _hayMas.asStateFlow()
+    val sinResultados: Boolean
+        get() = !cargando && error == null && pagina != null &&
+                gastos.isEmpty()
+}
 
-    private val _errorAlCargarMas = MutableStateFlow<String?>(null)
-    val errorAlCargarMas = _errorAlCargarMas.asStateFlow()
+class VerGastosViewModel(
+    private val verGastos: VerGastos,
+    private val pageSize: Int = PAGE_SIZE) : ViewModel()
+{
+    private val _uiState = MutableStateFlow(VerGastosUiState())
+    val uiState: StateFlow<VerGastosUiState> = _uiState.asStateFlow()
 
     fun cargar()
     {
-        if (_uiState.value is UiState.Cargando || _cargandoMas.value)
+        val state = _uiState.value
+        if (state.cargando || state.pagina != null)
             return
 
-        _pagina.value = null
-
-        _uiState.value = UiState.Cargando
-        _hayMas.value = true
-        _errorAlCargarMas.value = null
-        siguientePagina = 0
-
-        viewModelScope.launch {
-            try
-            {
-                val page = verGastos(
-                    number = 0,
-                    size = pageSize)
-
-                _pagina.value = page
-
-                siguientePagina = page.number + 1
-                _hayMas.value = page.hasNext
-                _uiState.value = UiState.Exito(page.content)
-            }
-            catch (e: CancellationException)
-            {
-                _uiState.value = UiState.Idle
-                throw e
-            }
-            catch (e: Exception)
-            {
-                _uiState.value = UiState.Error(
-                    e.message ?: "Error al cargar")
-            }
-        }
+        cargarPagina(numero = 0, reemplazar = true)
     }
 
     fun cargarMas()
     {
         val state = _uiState.value
-        if (state !is UiState.Exito) return
-        if (_cargandoMas.value || !_hayMas.value)
+        val pagina = state.pagina
+        if (state.cargando || pagina == null || !pagina.hasNext)
             return
 
-        _cargandoMas.value = true
-        _errorAlCargarMas.value = null
+        cargarPagina(numero = pagina.number + 1, reemplazar = false)
+    }
+
+    private fun cargarPagina(numero: Int, reemplazar: Boolean)
+    {
+        _uiState.update {
+            if (reemplazar)
+                it.copy(
+                    gastos = emptyList(),
+                    pagina = null,
+                    cargando = true,
+                    error = null)
+            else
+                it.copy(cargando = true, error = null)
+        }
 
         viewModelScope.launch {
             try
             {
                 val page = verGastos(
-                    number = siguientePagina,
+                    number = numero,
                     size = pageSize)
 
-                _pagina.value = page
-
-                siguientePagina = page.number + 1
-                _hayMas.value = page.hasNext
-                _uiState.value = UiState.Exito(
-                    state.data + page.content)
-            } catch (e: CancellationException)
+                _uiState.update {
+                    it.copy(
+                        gastos = if (reemplazar) page.content
+                                 else it.gastos + page.content,
+                        pagina = page,
+                        cargando = false)
+                }
+            }
+            catch (e: CancellationException)
             {
+                _uiState.update { it.copy(cargando = false) }
                 throw e
             }
             catch (e: Exception)
             {
-                _errorAlCargarMas.value =
-                    e.message ?: "Error al cargar más"
-            }
-            finally
-            {
-                _cargandoMas.value = false
+                _uiState.update {
+                    it.copy(
+                        cargando = false,
+                        error = e.message ?: if (reemplazar)
+                            "Error al cargar" else "Error al cargar más")
+                }
             }
         }
     }
 
     companion object
     {
+        private const val PAGE_SIZE = 20
+
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 VerGastosViewModel(

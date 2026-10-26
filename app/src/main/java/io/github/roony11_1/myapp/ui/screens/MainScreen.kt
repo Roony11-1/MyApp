@@ -1,13 +1,17 @@
 package io.github.roony11_1.myapp.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,27 +24,56 @@ fun MainScreen(
     onVerGastosClick: () -> Unit,
     onRegistrarGastoClick: () -> Unit)
 {
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally)
+        contentAlignment = Alignment.Center)
     {
-        Text(
-            text = "Mis gastos",
-            style = MaterialTheme.typography.headlineMedium)
-        Button(
-            onClick = onRegistrarGastoClick,
-            modifier = Modifier.fillMaxWidth())
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 2.dp)
         {
-            Text("Registrar gasto")
-        }
-        OutlinedButton(
-            onClick = onVerGastosClick,
-            modifier = Modifier.fillMaxWidth())
-        {
-            Text("Ver gastos")
+            Column(
+                modifier = Modifier.padding(
+                    horizontal = 24.dp,
+                    vertical = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally)
+            {
+                Text(
+                    text = "Mis gastos",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onSurface)
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onRegistrarGastoClick,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp))
+                {
+                    Text(
+                        text = "Registrar gasto",
+                        style = MaterialTheme.typography.labelLarge)
+                }
+
+                OutlinedButton(
+                    onClick = onVerGastosClick,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp))
+                {
+                    Text(
+                        text = "Ver gastos",
+                        style = MaterialTheme.typography.labelLarge)
+                }
+            }
         }
     }
 }

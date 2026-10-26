@@ -7,24 +7,25 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.roony11_1.myapp.core.util.formatearFechaHora
 import io.github.roony11_1.myapp.core.util.formatearMonto
 import io.github.roony11_1.myapp.domain.model.Gasto
-import io.github.roony11_1.myapp.ui.components.UiStateContent
-import io.github.roony11_1.myapp.ui.viewmodel.UiState
+import io.github.roony11_1.myapp.ui.viewmodel.VerGastoUiState
 import io.github.roony11_1.myapp.ui.viewmodel.VerGastoViewModel
 
 @Composable
@@ -32,7 +33,7 @@ fun VerGastoDetalleScreen(
     modifier: Modifier = Modifier,
     viewModel: VerGastoViewModel)
 {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.cargar()
@@ -42,20 +43,35 @@ fun VerGastoDetalleScreen(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center)
     {
-        UiStateContent(uiState) { isLoading, error, gasto ->
-            when
-            {
-                isLoading -> CircularProgressIndicator()
+        when (val actual = state)
+        {
+            VerGastoUiState.Inicial -> Unit
 
-                error != null -> Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error)
+            VerGastoUiState.Cargando -> CircularProgressIndicator()
 
-                gasto != null -> DetalleGasto(
-                    gasto,
-                    Modifier.fillMaxSize())
+            is VerGastoUiState.Error -> Text(
+                text = actual.mensaje,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(24.dp))
 
-                uiState is UiState.Exito -> Text("Gasto no encontrado")
+            is VerGastoUiState.Exito -> {
+                val gasto = actual.gasto
+
+                if (gasto != null)
+                {
+                    DetalleGasto(
+                        gasto,
+                        Modifier.fillMaxSize())
+                }
+                else
+                {
+                    Text(
+                        text = "Gasto no encontrado",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(24.dp))
+                }
             }
         }
     }
@@ -65,20 +81,39 @@ fun VerGastoDetalleScreen(
 private fun DetalleGasto(gasto: Gasto, modifier: Modifier = Modifier)
 {
     Column(
-        modifier = modifier.padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp))
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp))
     {
-        Text(
-            text = formatearMonto(gasto.monto),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 2.dp)
+        {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp))
+            {
+                Text(
+                    text = formatearMonto(gasto.monto),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.primary)
 
-        Text(gasto.descripcion, style = MaterialTheme.typography.titleMedium)
-        HorizontalDivider()
-        FilaDetalle("Cuenta", gasto.cuenta.nombre)
-        FilaDetalle("Categorías", gasto.categorias.joinToString(", ") { it.nombre })
+                Text(
+                    text = gasto.descripcion,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface)
 
-        FilaDetalle("Fecha", formatearFechaHora(gasto.fechaHora))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                FilaDetalle("Cuenta", gasto.cuenta.nombre)
+                FilaDetalle(
+                    "Categorías",
+                    gasto.categorias.joinToString(", ") { it.nombre })
+                FilaDetalle("Fecha", formatearFechaHora(gasto.fechaHora))
+            }
+        }
     }
 }
 
@@ -87,9 +122,19 @@ private fun FilaDetalle(etiqueta: String, valor: String)
 {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween)
+        horizontalArrangement = Arrangement.spacedBy(16.dp))
     {
-        Text(etiqueta, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(valor)
+        Text(
+            text = etiqueta,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f))
+
+        Text(
+            text = valor,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1.5f))
     }
 }

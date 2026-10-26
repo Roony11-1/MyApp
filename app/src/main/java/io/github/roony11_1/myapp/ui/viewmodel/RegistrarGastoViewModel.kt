@@ -16,51 +16,64 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+data class RegistrarGastoUiState(
+    val categorias: List<Categoria> = emptyList(),
+    val cuentas: List<Cuenta> = emptyList(),
+    val cargandoOpciones: Boolean = false,
+    val guardando: Boolean = false,
+    val error: String? = null,
+    val gastoGuardado: Gasto? = null)
+{
+    val ocupado: Boolean get() = cargandoOpciones || guardando
+}
 
 class RegistrarGastoViewModel(
     private val registrarGasto: RegistrarGasto,
     private val categoriaRepository: ICategoriaRepository,
-    private val cuentaRepository: ICuentaRepository): ViewModel()
+    private val cuentaRepository: ICuentaRepository) : ViewModel()
 {
-    private val _uiState = MutableStateFlow<UiState<Gasto>>(UiState.Idle)
-    val uiState: StateFlow<UiState<Gasto>> = _uiState.asStateFlow()
-
-    private val _categorias = MutableStateFlow<List<Categoria>>(emptyList())
-    val categorias = _categorias.asStateFlow()
-
-    private val _cuentas = MutableStateFlow<List<Cuenta>>(emptyList())
-    val cuentas = _cuentas.asStateFlow()
+    private val _uiState = MutableStateFlow(RegistrarGastoUiState())
+    val uiState: StateFlow<RegistrarGastoUiState> = _uiState.asStateFlow()
 
     init
     {
-        viewModelScope.launch {
-            try
-            {
-                _categorias.value = categoriaRepository.findAll()
-            }
-            catch (e: CancellationException)
-            {
-                throw e
-            }
-            catch (e: Exception)
-            {
-                _uiState.value = UiState.Error(e.message ?: "Error al cargar categorías")
-            }
+        cargarOpciones()
+    }
+
+    private fun cargarOpciones()
+    {
+        _uiState.update {
+            it.copy(cargandoOpciones = true, error = null)
         }
 
         viewModelScope.launch {
             try
             {
-                _cuentas.value = cuentaRepository.findAll()
+                val categorias = categoriaRepository.findAll()
+                val cuentas = cuentaRepository.findAll()
+
+                _uiState.update {
+                    it.copy(
+                        categorias = categorias,
+                        cuentas = cuentas,
+                        cargandoOpciones = false)
+                }
             }
             catch (e: CancellationException)
             {
+                _uiState.update { it.copy(cargandoOpciones = false) }
                 throw e
             }
             catch (e: Exception)
             {
-                _uiState.value = UiState.Error(e.message ?: "Error al cargar cuentas")
+                _uiState.update {
+                    it.copy(
+                        cargandoOpciones = false,
+                        error = e.message ?: "Error al cargar opciones")
+                }
             }
         }
     }
@@ -71,24 +84,45 @@ class RegistrarGastoViewModel(
         cuenta: Cuenta,
         categorias: List<Categoria>)
     {
-        viewModelScope.launch {
-            _uiState.value = UiState.Cargando
+        if (_uiState.value.guardando)
+            return
 
+        _uiState.update {
+            it.copy(guardando = true, error = null)
+        }
+
+        viewModelScope.launch {
             try
             {
-                val gasto = registrarGasto(monto, descripcion, cuenta, categorias)
+                val gasto = registrarGasto(
+                    monto,
+                    descripcion,
+                    cuenta,
+                    categorias)
 
-                _uiState.value = UiState.Exito(gasto)
+                _uiState.update {
+                    it.copy(guardando = false, gastoGuardado = gasto)
+                }
+            }
+            catch (e: CancellationException)
+            {
+                _uiState.update { it.copy(guardando = false) }
+                throw e
             }
             catch (e: Exception)
             {
-                _uiState.value = UiState.Error(e.message ?: "Error al guardar")
+                _uiState.update {
+                    it.copy(
+                        guardando = false,
+                        error = e.message ?: "Error al guardar")
+                }
             }
         }
     }
 
-    fun onExitoConsumido() {
-        _uiState.value = UiState.Idle
+    fun onExitoConsumido()
+    {
+        _uiState.update { it.copy(gastoGuardado = null) }
     }
 
     companion object
@@ -99,8 +133,8 @@ class RegistrarGastoViewModel(
                     registrarGasto = RegistrarGasto(
                         gastoRepository = container.gastoRepository,
                         clock = container.clock),
-                    container.categoriaRepository,
-                    container.cuentaRepository)
+                    categoriaRepository = container.categoriaRepository,
+                    cuentaRepository = container.cuentaRepository)
             }
         }
     }

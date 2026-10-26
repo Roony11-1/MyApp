@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import io.github.roony11_1.myapp.ui.navigation.Inicio
 import io.github.roony11_1.myapp.ui.navigation.RegistrarGasto
@@ -39,6 +41,9 @@ class MainActivity : ComponentActivity()
                         backStack = backStack,
                         onBack = { backStack.removeLastOrNull() },
                         modifier = Modifier.padding(innerPadding),
+                        entryDecorators = listOf(
+                            rememberSaveableStateHolderNavEntryDecorator(),
+                            rememberViewModelStoreNavEntryDecorator()),
                         entryProvider = entryProvider
                         {
                             mainScreenEntry(
