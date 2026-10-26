@@ -2,6 +2,7 @@ package io.github.roony11_1.myapp.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -10,9 +11,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Category
@@ -50,6 +53,7 @@ import io.github.roony11_1.myapp.ui.components.BotonAgregar
 import io.github.roony11_1.myapp.ui.components.BotonPrincipal
 import io.github.roony11_1.myapp.ui.components.CampoTextoPremium
 import io.github.roony11_1.myapp.ui.components.ChipPremium
+import io.github.roony11_1.myapp.ui.components.DialogoAyudaRegistroGasto
 import io.github.roony11_1.myapp.ui.components.DialogoConfirmarGasto
 import io.github.roony11_1.myapp.ui.components.EncabezadoPantalla
 import io.github.roony11_1.myapp.ui.components.ResumenGasto
@@ -101,6 +105,7 @@ fun RegistrarGastoScreen(
     var nuevaCategoria by remember { mutableStateOf("") }
     var nuevaCuenta by remember { mutableStateOf("") }
     var gastoPendiente by remember { mutableStateOf<GastoPendiente?>(null) }
+    var mostrarAyuda by remember { mutableStateOf(false) }
 
     val comercioFocusRequester = remember { FocusRequester() }
     val categoriaFocusRequester = remember { FocusRequester() }
@@ -213,7 +218,28 @@ fun RegistrarGastoScreen(
             titulo = "Registrar gasto",
             eyebrow = "Nuevo movimiento",
             subtitulo = "Completa los datos y guarda en segundos.",
-            onBack = onBack)
+            onBack = onBack,
+            accion = {
+                Surface(
+                    onClick = { mostrarAyuda = true },
+                    modifier = Modifier.size(44.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                            .copy(alpha = 0.7f)))
+                {
+                    Box(contentAlignment = Alignment.Center)
+                    {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.HelpOutline,
+                            contentDescription = "Cómo funciona el formulario",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp))
+                    }
+                }
+            })
 
         TarjetaSeccion(
             titulo = "Detalle",
@@ -659,5 +685,11 @@ fun RegistrarGastoScreen(
             onCancelar = {
                 gastoPendiente = null
             })
+    }
+
+    if (mostrarAyuda)
+    {
+        DialogoAyudaRegistroGasto(
+            onCerrar = { mostrarAyuda = false })
     }
 }
