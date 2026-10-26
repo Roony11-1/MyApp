@@ -10,6 +10,7 @@ import io.github.roony11_1.myapp.domain.model.Categoria
 import io.github.roony11_1.myapp.domain.model.Cuenta
 import io.github.roony11_1.myapp.domain.model.Gasto
 import io.github.roony11_1.myapp.domain.repository.ICategoriaRepository
+import io.github.roony11_1.myapp.domain.repository.ICuentaRepository
 import io.github.roony11_1.myapp.domain.usecase.RegistrarGasto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,13 +20,17 @@ import kotlinx.coroutines.launch
 
 class RegistrarGastoViewModel(
     private val registrarGasto: RegistrarGasto,
-    private val categoriaRepository: ICategoriaRepository): ViewModel()
+    private val categoriaRepository: ICategoriaRepository,
+    private val cuentaRepository: ICuentaRepository): ViewModel()
 {
     private val _uiState = MutableStateFlow<UiState<Gasto>>(UiState.Idle)
     val uiState: StateFlow<UiState<Gasto>> = _uiState.asStateFlow()
 
     private val _categorias = MutableStateFlow<List<Categoria>>(emptyList())
     val categorias = _categorias.asStateFlow()
+
+    private val _cuentas = MutableStateFlow<List<Cuenta>>(emptyList())
+    val cuentas = _cuentas.asStateFlow()
 
     init
     {
@@ -43,9 +48,22 @@ class RegistrarGastoViewModel(
                 _uiState.value = UiState.Error(e.message ?: "Error al cargar categorías")
             }
         }
-    }
 
-    val cuentas = listOf<Cuenta>(Cuenta(1L, "Cuenta por defecto"))
+        viewModelScope.launch {
+            try
+            {
+                _cuentas.value = cuentaRepository.findAll()
+            }
+            catch (e: CancellationException)
+            {
+                throw e
+            }
+            catch (e: Exception)
+            {
+                _uiState.value = UiState.Error(e.message ?: "Error al cargar cuentas")
+            }
+        }
+    }
 
     fun onGuardar(
         monto: Double,
@@ -81,7 +99,8 @@ class RegistrarGastoViewModel(
                     registrarGasto = RegistrarGasto(
                         gastoRepository = container.gastoRepository,
                         clock = container.clock),
-                    container.categoriaRepository)
+                    container.categoriaRepository,
+                    container.cuentaRepository)
             }
         }
     }

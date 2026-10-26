@@ -1,5 +1,6 @@
 package io.github.roony11_1.myapp.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,14 +21,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.roony11_1.myapp.core.util.claveDia
+import io.github.roony11_1.myapp.core.util.formatearEncabezadoDia
 import io.github.roony11_1.myapp.core.util.formatearFechaHora
 import io.github.roony11_1.myapp.core.util.formatearMonto
 import io.github.roony11_1.myapp.ui.viewmodel.UiState
 import io.github.roony11_1.myapp.ui.viewmodel.VerGastosViewModel
+
+
 
 @Composable
 fun VerGastosScreen(
@@ -126,56 +132,79 @@ fun VerGastosScreen(
                 }
                 else
                 {
+                    // La BD ya entrega ordenado por fecha_hora DESC,
+                    // y groupBy preserva el orden de aparición de las claves.
+                    val gastosAgrupados = remember(state.data) {
+                        state.data.groupBy { claveDia(it.fechaHora) }
+                    }
+
                     LazyColumn(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth(),
                         contentPadding = PaddingValues(
                             horizontal = 16.dp,
-                            vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp))
+                            vertical = 8.dp))
                     {
-                        items(
-                            items = state.data,
-                            key = { it.id }) { gasto ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onGastoClick(gasto.id)
-                                    },
-                                colors = CardDefaults.cardColors(
-                                    containerColor =
-                                        MaterialTheme.colorScheme.surfaceVariant))
-                            {
-                                Column(
+                        gastosAgrupados.forEach { (dia, gastosDelDia) ->
+
+                            stickyHeader(key = "header-$dia") {
+                                Text(
+                                    text = formatearEncabezadoDia(dia),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(16.dp))
+                                        .background(
+                                            MaterialTheme.colorScheme.background)
+                                        .padding(vertical = 8.dp))
+                            }
+
+                            items(
+                                items = gastosDelDia,
+                                key = { it.id }) { gasto ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .clickable {
+                                            onGastoClick(gasto.id)
+                                        },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor =
+                                            MaterialTheme.colorScheme.surfaceVariant))
                                 {
-                                    Text(
-                                        text = gasto.descripcion,
-                                        style = MaterialTheme.typography.titleMedium)
-
-                                    Text(
-                                        text = formatearMonto(gasto.monto),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.primary)
-
-                                    Text(
-                                        text = formatearFechaHora(gasto.fechaHora),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    Column(
                                         modifier = Modifier
-                                            .align(Alignment.End)
-                                            .padding(top = 8.dp))
+                                            .fillMaxWidth()
+                                            .padding(16.dp))
+                                    {
+                                        Text(
+                                            text = gasto.descripcion,
+                                            style = MaterialTheme.typography.titleMedium)
+
+                                        Text(
+                                            text = formatearMonto(gasto.monto),
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.primary)
+
+                                        Text(
+                                            text = formatearFechaHora(gasto.fechaHora),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier
+                                                .align(Alignment.End)
+                                                .padding(top = 8.dp))
+                                    }
                                 }
                             }
                         }
 
-                        item {
+                        item(key = "footer") {
                             Column(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp))
                             {
                                 errorAlCargarMas?.let { mensaje ->
