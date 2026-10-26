@@ -1,7 +1,6 @@
 package io.github.roony11_1.myapp.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -17,7 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -25,7 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.roony11_1.myapp.core.util.formatearFechaHora
 import io.github.roony11_1.myapp.core.util.formatearMonto
 import io.github.roony11_1.myapp.domain.model.Gasto
-import io.github.roony11_1.myapp.ui.viewmodel.VerGastoUiState
+import io.github.roony11_1.myapp.ui.components.UiStateContent
 import io.github.roony11_1.myapp.ui.viewmodel.VerGastoViewModel
 
 @Composable
@@ -39,41 +36,20 @@ fun VerGastoDetalleScreen(
         viewModel.cargar()
     }
 
-    Box(
+    UiStateContent<Gasto>(
+        state = state,
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center)
-    {
-        when (val actual = state)
-        {
-            VerGastoUiState.Inicial -> Unit
-
-            VerGastoUiState.Cargando -> CircularProgressIndicator()
-
-            is VerGastoUiState.Error -> Text(
-                text = actual.mensaje,
+        emptyContent = {
+            Text(
+                text = "Gasto no encontrado",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.error,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(24.dp))
-
-            is VerGastoUiState.Exito -> {
-                val gasto = actual.gasto
-
-                if (gasto != null)
-                {
-                    DetalleGasto(
-                        gasto,
-                        Modifier.fillMaxSize())
-                }
-                else
-                {
-                    Text(
-                        text = "Gasto no encontrado",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(24.dp))
-                }
-            }
-        }
+        })
+    { gasto ->
+        DetalleGasto(
+            gasto = gasto,
+            modifier = Modifier.fillMaxSize())
     }
 }
 

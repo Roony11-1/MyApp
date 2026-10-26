@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.roony11_1.myapp.core.di.AppContainer
-import io.github.roony11_1.myapp.core.pagination.Page
 import io.github.roony11_1.myapp.domain.model.Gasto
 import io.github.roony11_1.myapp.domain.usecase.VerGastos
 import kotlinx.coroutines.CancellationException
@@ -16,34 +15,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class VerGastosUiState(
-    val gastos: List<Gasto> = emptyList(),
-    val pagina: Page<Gasto>? = null,
-    val cargando: Boolean = false,
-    val error: String? = null)
-{
-    val cargandoInicial: Boolean get() = cargando && gastos.isEmpty()
-
-    val cargandoMas: Boolean get() = cargando && gastos.isNotEmpty()
-
-    val hayMas: Boolean get() = pagina?.hasNext ?: true
-
-    val sinResultados: Boolean
-        get() = !cargando && error == null && pagina != null &&
-                gastos.isEmpty()
-}
-
 class VerGastosViewModel(
     private val verGastos: VerGastos,
     private val pageSize: Int = PAGE_SIZE) : ViewModel()
 {
-    private val _uiState = MutableStateFlow(VerGastosUiState())
-    val uiState: StateFlow<VerGastosUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(PagedUiState<Gasto>())
+    val uiState: StateFlow<PagedUiState<Gasto>> = _uiState.asStateFlow()
 
     fun cargar()
     {
         val state = _uiState.value
-        if (state.cargando || state.pagina != null)
+        if (state.isLoading || state.loadingMore || state.page != null)
             return
 
         cargarPagina(numero = 0, reemplazar = true)
@@ -52,8 +34,9 @@ class VerGastosViewModel(
     fun cargarMas()
     {
         val state = _uiState.value
-        val pagina = state.pagina
-        if (state.cargando || pagina == null || !pagina.hasNext)
+        val pagina = state.page
+        if (state.isLoading || state.loadingMore || pagina == null ||
+            !pagina.hasNext)
             return
 
         cargarPagina(numero = pagina.number + 1, reemplazar = false)
@@ -64,12 +47,16 @@ class VerGastosViewModel(
         _uiState.update {
             if (reemplazar)
                 it.copy(
-                    gastos = emptyList(),
-                    pagina = null,
-                    cargando = true,
-                    error = null)
+                    items = emptyList(),
+                    page = null,
+                    isLoading = true,
+                    error = null,
+                    loadingMore = false,
+                    loadMoreError = null)
             else
-                it.copy(cargando = true, error = null)
+                it.copy(
+                    loadingMore = true,
+                    loadMoreError = null)
         }
 
         viewModelScope.launch {
@@ -81,24 +68,40 @@ class VerGastosViewModel(
 
                 _uiState.update {
                     it.copy(
-                        gastos = if (reemplazar) page.content
-                                 else it.gastos + page.content,
-                        pagina = page,
-                        cargando = false)
+                        items = if (reemplazar) page.content
+                                else it.items + page.content,
+                        page = page,
+                        isLoading = false,
+                        loadingMore = false,
+                        error = null,
+                        loadMoreError = null)
                 }
             }
             catch (e: CancellationException)
             {
-                _uiState.update { it.copy(cargando = false) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        loadingMore = false)
+                }
                 throw e
             }
             catch (e: Exception)
             {
+                val mensaje = e.message ?: if (reemplazar)
+                    "Error al cargar"
+                else
+                    "Error al cargar más"
+
                 _uiState.update {
-                    it.copy(
-                        cargando = false,
-                        error = e.message ?: if (reemplazar)
-                            "Error al cargar" else "Error al cargar más")
+                    if (reemplazar)
+                        it.copy(
+                            isLoading = false,
+                            error = mensaje)
+                    else
+                        it.copy(
+                            loadingMore = false,
+                            loadMoreError = mensaje)
                 }
             }
         }

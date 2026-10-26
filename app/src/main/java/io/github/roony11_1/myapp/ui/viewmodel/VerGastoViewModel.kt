@@ -14,44 +14,34 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-sealed interface VerGastoUiState
-{
-    data object Inicial : VerGastoUiState
-    data object Cargando : VerGastoUiState
-    data class Error(val mensaje: String) : VerGastoUiState
-    data class Exito(val gasto: Gasto?) : VerGastoUiState
-}
-
 class VerGastoViewModel(
     private val verGasto: VerGasto,
     private val gastoId: Long) : ViewModel()
 {
-    private val _uiState =
-        MutableStateFlow<VerGastoUiState>(VerGastoUiState.Inicial)
-    val uiState: StateFlow<VerGastoUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<UiState<Gasto?>>(UiState.Idle)
+    val uiState: StateFlow<UiState<Gasto?>> = _uiState.asStateFlow()
 
     fun cargar()
     {
         val state = _uiState.value
-        if (state is VerGastoUiState.Cargando ||
-            state is VerGastoUiState.Exito)
+        if (state is UiState.Cargando || state is UiState.Exito)
             return
 
-        _uiState.value = VerGastoUiState.Cargando
+        _uiState.value = UiState.Cargando
 
         viewModelScope.launch {
             try
             {
-                _uiState.value = VerGastoUiState.Exito(verGasto(gastoId))
+                _uiState.value = UiState.Exito(verGasto(gastoId))
             }
             catch (e: CancellationException)
             {
-                _uiState.value = VerGastoUiState.Inicial
+                _uiState.value = UiState.Idle
                 throw e
             }
             catch (e: Exception)
             {
-                _uiState.value = VerGastoUiState.Error(
+                _uiState.value = UiState.Error(
                     e.message ?: "Error al cargar")
             }
         }

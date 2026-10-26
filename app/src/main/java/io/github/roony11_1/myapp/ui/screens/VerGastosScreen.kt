@@ -33,6 +33,9 @@ import io.github.roony11_1.myapp.core.util.claveDia
 import io.github.roony11_1.myapp.core.util.formatearEncabezadoDia
 import io.github.roony11_1.myapp.core.util.formatearFechaHora
 import io.github.roony11_1.myapp.core.util.formatearMonto
+import io.github.roony11_1.myapp.domain.model.Gasto
+import io.github.roony11_1.myapp.ui.components.UiStateContent
+import io.github.roony11_1.myapp.ui.viewmodel.PagedData
 import io.github.roony11_1.myapp.ui.viewmodel.VerGastosViewModel
 
 @Composable
@@ -59,246 +62,269 @@ fun VerGastosScreen(
                 top = 24.dp,
                 bottom = 12.dp))
 
-        val pagina = state.pagina
-        val error = state.error
+        UiStateContent<PagedData<Gasto>>(
+            state = state,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            errorContent = { mensaje ->
+                ErrorCargaGastos(
+                    mensaje = mensaje,
+                    onReintentar = viewModel::cargar)
+            })
+        { pagedData ->
+            ContenidoGastos(
+                pagedData = pagedData,
+                onGastoClick = onGastoClick,
+                onCargarMas = viewModel::cargarMas)
+        }
+    }
+}
 
-        when
+@Composable
+private fun ErrorCargaGastos(
+    mensaje: String,
+    onReintentar: () -> Unit)
+{
+    Column(
+        modifier = Modifier.padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp))
+    {
+        Text(
+            text = mensaje,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error)
+
+        Button(
+            onClick = onReintentar,
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.height(48.dp))
         {
-            state.cargandoInicial -> {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.Center)
-                {
-                    CircularProgressIndicator()
-                }
-            }
+            Text(
+                text = "Reintentar",
+                style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
 
-            error != null && state.gastos.isEmpty() -> {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp))
+@Composable
+private fun ContenidoGastos(
+    pagedData: PagedData<Gasto>,
+    onGastoClick: (Long) -> Unit,
+    onCargarMas: () -> Unit)
+{
+    val pagina = pagedData.page
+
+    Column(
+        modifier = Modifier.fillMaxSize())
+    {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surfaceContainer)
+        {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp))
+            {
+                Text(
+                    text = "${pagedData.items.size} de " +
+                            "${pagina.totalElements} gastos cargados",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface)
+
+                if (pagina.totalPages > 0)
                 {
                     Text(
-                        text = error,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.error)
-
-                    Button(
-                        onClick = { viewModel.cargar() },
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.height(48.dp))
-                    {
-                        Text(
-                            text = "Reintentar",
-                            style = MaterialTheme.typography.labelLarge)
-                    }
+                        text = "Páginas cargadas: " +
+                                "${pagina.number + 1} de ${pagina.totalPages}" +
+                                " · ${pagina.size} por página",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+        }
 
-            pagina != null -> {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surfaceContainer)
-                {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp))
-                    {
+        if (pagedData.items.isEmpty())
+        {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center)
+            {
+                Text(
+                    text = "No hay gastos registrados",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        else
+        {
+            // La BD ya entrega ordenado por fecha_hora DESC,
+            // y groupBy preserva el orden de aparición de las claves.
+            val gastosAgrupados = remember(pagedData.items) {
+                pagedData.items.groupBy { claveDia(it.fechaHora) }
+            }
+
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    horizontal = 16.dp,
+                    vertical = 8.dp))
+            {
+                gastosAgrupados.forEach { (dia, gastosDelDia) ->
+
+                    stickyHeader(key = "header-$dia") {
                         Text(
-                            text = "${state.gastos.size} de " +
-                                    "${pagina.totalElements} gastos cargados",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface)
+                            text = formatearEncabezadoDia(dia),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    MaterialTheme.colorScheme.background)
+                                .padding(
+                                    start = 4.dp,
+                                    end = 4.dp,
+                                    top = 12.dp,
+                                    bottom = 8.dp))
+                    }
 
-                        if (pagina.totalPages > 0)
-                        {
-                            Text(
-                                text = "Páginas cargadas: " +
-                                        "${pagina.number + 1} de ${pagina.totalPages}" +
-                                        " · ${pagina.size} por página",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                    items(
+                        items = gastosDelDia,
+                        key = { it.id }) { gasto ->
+                        GastoItem(
+                            gasto = gasto,
+                            onClick = { onGastoClick(gasto.id) })
                     }
                 }
 
-                if (state.sinResultados)
+                item(key = "footer") {
+                    FooterPaginacion(
+                        hayMas = pagedData.hayMas,
+                        cargandoMas = pagedData.loadingMore,
+                        error = pagedData.loadMoreError,
+                        onCargarMas = onCargarMas)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GastoItem(
+    gasto: Gasto,
+    onClick: () -> Unit)
+{
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant))
+    {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = 20.dp,
+                    vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.Top)
+        {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp))
+            {
+                Text(
+                    text = gasto.descripcion,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface)
+
+                Text(
+                    text = formatearFechaHora(gasto.fechaHora),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            Text(
+                text = formatearMonto(gasto.monto),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+@Composable
+private fun FooterPaginacion(
+    hayMas: Boolean,
+    cargandoMas: Boolean,
+    error: String?,
+    onCargarMas: () -> Unit)
+{
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp))
+    {
+        error?.let { mensaje ->
+            Text(
+                text = mensaje,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error)
+        }
+
+        if (hayMas)
+        {
+            Button(
+                onClick = onCargarMas,
+                enabled = !cargandoMas,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp))
+            {
+                if (cargandoMas)
                 {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center)
-                    {
-                        Text(
-                            text = "No hay gastos registrados",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary)
                 }
                 else
                 {
-                    // La BD ya entrega ordenado por fecha_hora DESC,
-                    // y groupBy preserva el orden de aparición de las claves.
-                    val gastosAgrupados = remember(state.gastos) {
-                        state.gastos.groupBy { claveDia(it.fechaHora) }
-                    }
-
-                    LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentPadding = PaddingValues(
-                            horizontal = 16.dp,
-                            vertical = 8.dp))
-                    {
-                        gastosAgrupados.forEach { (dia, gastosDelDia) ->
-
-                            stickyHeader(key = "header-$dia") {
-                                Text(
-                                    text = formatearEncabezadoDia(dia),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(
-                                            MaterialTheme.colorScheme.background)
-                                        .padding(
-                                            start = 4.dp,
-                                            end = 4.dp,
-                                            top = 12.dp,
-                                            bottom = 8.dp))
-                            }
-
-                            items(
-                                items = gastosDelDia,
-                                key = { it.id }) { gasto ->
-                                Card(
-                                    onClick = { onGastoClick(gasto.id) },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    shape = MaterialTheme.shapes.large,
-                                    colors = CardDefaults.cardColors(
-                                        containerColor =
-                                            MaterialTheme.colorScheme.surfaceContainerLow),
-                                    elevation = CardDefaults.cardElevation(
-                                        defaultElevation = 0.dp),
-                                    border = BorderStroke(
-                                        width = 1.dp,
-                                        color =
-                                            MaterialTheme.colorScheme.outlineVariant))
-                                {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(
-                                                horizontal = 20.dp,
-                                                vertical = 16.dp),
-                                        horizontalArrangement =
-                                            Arrangement.spacedBy(16.dp),
-                                        verticalAlignment = Alignment.Top)
-                                    {
-                                        Column(
-                                            modifier = Modifier.weight(1f),
-                                            verticalArrangement =
-                                                Arrangement.spacedBy(6.dp))
-                                        {
-                                            Text(
-                                                text = gasto.descripcion,
-                                                style = MaterialTheme.typography
-                                                    .titleMedium,
-                                                color = MaterialTheme.colorScheme
-                                                    .onSurface)
-
-                                            Text(
-                                                text =
-                                                    formatearFechaHora(gasto.fechaHora),
-                                                style =
-                                                    MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme
-                                                    .onSurfaceVariant)
-                                        }
-
-                                        Text(
-                                            text = formatearMonto(gasto.monto),
-                                            style = MaterialTheme.typography
-                                                .titleLarge,
-                                            color = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            }
-                        }
-
-                        item(key = "footer") {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp))
-                            {
-                                error?.let { mensaje ->
-                                    Text(
-                                        text = mensaje,
-                                        style =
-                                            MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.error)
-                                }
-
-                                if (state.hayMas)
-                                {
-                                    Button(
-                                        onClick = { viewModel.cargarMas() },
-                                        enabled = !state.cargandoMas,
-                                        shape = MaterialTheme.shapes.medium,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(48.dp))
-                                    {
-                                        if (state.cargandoMas)
-                                        {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(20.dp),
-                                                strokeWidth = 2.dp,
-                                                color =
-                                                    MaterialTheme.colorScheme
-                                                        .onPrimary)
-                                        }
-                                        else
-                                        {
-                                            Text(
-                                                text =
-                                                    if (error != null)
-                                                        "Reintentar"
-                                                    else
-                                                        "Cargar más",
-                                                style = MaterialTheme.typography
-                                                    .labelLarge)
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    Text(
-                                        text = "Todos los gastos están cargados",
-                                        style =
-                                            MaterialTheme.typography.bodySmall,
-                                        color =
-                                            MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier
-                                            .align(Alignment.CenterHorizontally)
-                                            .padding(vertical = 16.dp))
-                                }
-                            }
-                        }
-                    }
+                    Text(
+                        text =
+                            if (error != null)
+                                "Reintentar"
+                            else
+                                "Cargar más",
+                        style = MaterialTheme.typography.labelLarge)
                 }
             }
+        }
+        else
+        {
+            Text(
+                text = "Todos los gastos están cargados",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(vertical = 16.dp))
         }
     }
 }
