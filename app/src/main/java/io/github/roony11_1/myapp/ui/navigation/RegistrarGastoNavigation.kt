@@ -9,7 +9,8 @@ import io.github.roony11_1.myapp.ui.viewmodel.RegistrarGastoViewModel
 
 fun EntryProviderScope<NavKey>.registrarGastoEntry(
     container: AppContainer,
-    onGuardadoExitoso: () -> Unit)
+    onGuardadoExitoso: () -> Unit,
+    onBack: () -> Unit)
 {
     entry<RegistrarGasto>
     {
@@ -18,6 +19,7 @@ fun EntryProviderScope<NavKey>.registrarGastoEntry(
 
         RegistrarGastoScreen(
             viewModel = viewModel,
-            onGuardadoExitoso = onGuardadoExitoso)
+            onGuardadoExitoso = onGuardadoExitoso,
+            onBack = onBack)
     }
 }

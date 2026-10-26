@@ -1,67 +1,102 @@
 package io.github.roony11_1.myapp.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = PremiumPrimaryDark,
+    onPrimary = PremiumOnPrimaryDark,
+    primaryContainer = PremiumPrimaryContainerDark,
+    onPrimaryContainer = PremiumOnPrimaryContainerDark,
+    secondary = PremiumSecondaryDark,
+    onSecondary = PremiumOnSecondaryDark,
+    secondaryContainer = PremiumSecondaryContainerDark,
+    onSecondaryContainer = PremiumOnSecondaryContainerDark,
+    tertiary = PremiumTertiaryDark,
+    onTertiary = PremiumOnTertiaryDark,
+    tertiaryContainer = PremiumTertiaryContainerDark,
+    onTertiaryContainer = PremiumOnTertiaryContainerDark,
+    error = PremiumErrorDark,
+    onError = PremiumOnErrorDark,
+    errorContainer = PremiumErrorContainerDark,
+    onErrorContainer = PremiumOnErrorContainerDark,
+    background = PremiumBackgroundDark,
+    onBackground = PremiumOnBackgroundDark,
+    surface = PremiumSurfaceDark,
+    onSurface = PremiumOnSurfaceDark,
+    surfaceVariant = PremiumSurfaceContainerDark,
+    onSurfaceVariant = PremiumOnSurfaceVariantDark,
+    surfaceContainerLowest = PremiumSurfaceLowestDark,
+    surfaceContainerLow = PremiumSurfaceLowDark,
+    surfaceContainer = PremiumSurfaceContainerDark,
+    surfaceContainerHigh = PremiumSurfaceHighDark,
+    surfaceContainerHighest = PremiumSurfaceHighestDark,
+    outline = PremiumOutlineDark,
+    outlineVariant = PremiumOutlineVariantDark,
+    inverseSurface = PremiumInverseSurfaceDark,
+    inverseOnSurface = PremiumInverseOnSurfaceDark,
+    inversePrimary = PremiumInversePrimaryDark,
+    scrim = PremiumScrim
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    primary = PremiumPrimaryLight,
+    onPrimary = PremiumOnPrimaryLight,
+    primaryContainer = PremiumPrimaryContainerLight,
+    onPrimaryContainer = PremiumOnPrimaryContainerLight,
+    secondary = PremiumSecondaryLight,
+    onSecondary = PremiumOnSecondaryLight,
+    secondaryContainer = PremiumSecondaryContainerLight,
+    onSecondaryContainer = PremiumOnSecondaryContainerLight,
+    tertiary = PremiumTertiaryLight,
+    onTertiary = PremiumOnTertiaryLight,
+    tertiaryContainer = PremiumTertiaryContainerLight,
+    onTertiaryContainer = PremiumOnTertiaryContainerLight,
+    error = PremiumErrorLight,
+    onError = PremiumOnErrorLight,
+    errorContainer = PremiumErrorContainerLight,
+    onErrorContainer = PremiumOnErrorContainerLight,
+    background = PremiumBackgroundLight,
+    onBackground = PremiumOnBackgroundLight,
+    surface = PremiumSurfaceLight,
+    onSurface = PremiumOnSurfaceLight,
+    surfaceVariant = PremiumSurfaceContainerLight,
+    onSurfaceVariant = PremiumOnSurfaceVariantLight,
+    surfaceContainerLowest = PremiumSurfaceLowestLight,
+    surfaceContainerLow = PremiumSurfaceLowLight,
+    surfaceContainer = PremiumSurfaceContainerLight,
+    surfaceContainerHigh = PremiumSurfaceHighLight,
+    surfaceContainerHighest = PremiumSurfaceHighestLight,
+    outline = PremiumOutlineLight,
+    outlineVariant = PremiumOutlineVariantLight,
+    inverseSurface = PremiumInverseSurfaceLight,
+    inverseOnSurface = PremiumInverseOnSurfaceLight,
+    inversePrimary = PremiumInversePrimaryLight,
+    scrim = PremiumScrim
 )
 
 private val AppShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(28.dp)
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(14.dp),
+    medium = RoundedCornerShape(18.dp),
+    large = RoundedCornerShape(26.dp),
+    extraLarge = RoundedCornerShape(32.dp)
 )
 
 @Composable
 fun MyAppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
-) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
+)
+{
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
         typography = Typography,
         shapes = AppShapes,
         content = content

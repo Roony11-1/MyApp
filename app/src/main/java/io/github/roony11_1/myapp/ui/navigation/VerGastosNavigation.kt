@@ -9,7 +9,8 @@ import io.github.roony11_1.myapp.ui.viewmodel.VerGastosViewModel
 
 fun EntryProviderScope<NavKey>.verGastosEntry(
     container: AppContainer,
-    onNavigateToGastoClick: (Long) -> Unit)
+    onNavigateToGastoClick: (Long) -> Unit,
+    onBack: () -> Unit)
 {
     entry<VerGastos>
     {
@@ -18,6 +19,7 @@ fun EntryProviderScope<NavKey>.verGastosEntry(
 
         VerGastosScreen(
             viewModel = viewModel,
-            onGastoClick = onNavigateToGastoClick)
+            onGastoClick = onNavigateToGastoClick,
+            onBack = onBack)
     }
 }

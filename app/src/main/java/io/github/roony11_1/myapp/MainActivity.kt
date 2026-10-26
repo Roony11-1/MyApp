@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -21,6 +22,7 @@ import io.github.roony11_1.myapp.ui.navigation.mainScreenEntry
 import io.github.roony11_1.myapp.ui.navigation.registrarGastoEntry
 import io.github.roony11_1.myapp.ui.navigation.verGastoDetalleEntry
 import io.github.roony11_1.myapp.ui.navigation.verGastosEntry
+import io.github.roony11_1.myapp.ui.components.FondoPremium
 import io.github.roony11_1.myapp.ui.theme.MyAppTheme
 
 class MainActivity : ComponentActivity()
@@ -34,33 +36,43 @@ class MainActivity : ComponentActivity()
 
         setContent {
             MyAppTheme {
-                val backStack = rememberNavBackStack(Inicio)
+                FondoPremium {
+                    val backStack = rememberNavBackStack(Inicio)
+                    val onBack: () -> Unit = { backStack.removeLastOrNull() }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    NavDisplay(
-                        backStack = backStack,
-                        onBack = { backStack.removeLastOrNull() },
-                        modifier = Modifier.padding(innerPadding),
-                        entryDecorators = listOf(
-                            rememberSaveableStateHolderNavEntryDecorator(),
-                            rememberViewModelStoreNavEntryDecorator()),
-                        entryProvider = entryProvider
-                        {
-                            mainScreenEntry(
-                                onNavigateToVerGastos = { backStack.add(VerGastos) },
-                                onNavigateToRegistrarGasto = { backStack.add(RegistrarGasto) })
+                    Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        containerColor = Color.Transparent)
+                    { innerPadding ->
+                        NavDisplay(
+                            backStack = backStack,
+                            onBack = onBack,
+                            modifier = Modifier.padding(innerPadding),
+                            entryDecorators = listOf(
+                                rememberSaveableStateHolderNavEntryDecorator(),
+                                rememberViewModelStoreNavEntryDecorator()),
+                            entryProvider = entryProvider
+                            {
+                                mainScreenEntry(
+                                    onNavigateToVerGastos = { backStack.add(VerGastos) },
+                                    onNavigateToRegistrarGasto = { backStack.add(RegistrarGasto) })
 
-                            registrarGastoEntry(
-                                container = container,
-                                onGuardadoExitoso = { backStack.removeLastOrNull() })
+                                registrarGastoEntry(
+                                    container = container,
+                                    onGuardadoExitoso = onBack,
+                                    onBack = onBack)
 
-                            verGastosEntry(
-                                container,
-                                onNavigateToGastoClick = { id -> backStack.add(VerGasto(id)) })
+                                verGastosEntry(
+                                    container,
+                                    onNavigateToGastoClick = { id -> backStack.add(VerGasto(id)) },
+                                    onBack = onBack)
 
-                            verGastoDetalleEntry(container)
-                        }
-                    )
+                                verGastoDetalleEntry(
+                                    container = container,
+                                    onBack = onBack)
+                            }
+                        )
+                    }
                 }
             }
         }
