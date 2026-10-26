@@ -20,22 +20,25 @@ class GastosDatabaseHelper(context: Context)
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int)
     {
         val database = db ?: return
+        recrearBaseDeDatos(database)
+    }
 
-        if (oldVersion < 2)
-        {
-            database.execSQL(CREAR_TABLA_COMERCIO)
-            database.execSQL(CREAR_TABLA_ETIQUETA)
+    override fun onDowngrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int)
+    {
+        val database = db ?: return
+        recrearBaseDeDatos(database)
+    }
 
-            database.execSQL(
-                "ALTER TABLE gasto ADD COLUMN comercio_id INTEGER NULL " +
-                        "REFERENCES comercio(id)")
-            database.execSQL(
-                "ALTER TABLE gasto ADD COLUMN notas TEXT NULL")
-
-            database.execSQL(CREAR_TABLA_GASTO_ETIQUETA)
-            database.execSQL(CREAR_INDICE_GASTO_COMERCIO)
-            database.execSQL(CREAR_INDICE_GASTO_ETIQUETA)
-        }
+    private fun recrearBaseDeDatos(db: SQLiteDatabase)
+    {
+        db.execSQL("DROP TABLE IF EXISTS gasto_etiqueta")
+        db.execSQL("DROP TABLE IF EXISTS gasto_categoria")
+        db.execSQL("DROP TABLE IF EXISTS gasto")
+        db.execSQL("DROP TABLE IF EXISTS etiqueta")
+        db.execSQL("DROP TABLE IF EXISTS comercio")
+        db.execSQL("DROP TABLE IF EXISTS categoria")
+        db.execSQL("DROP TABLE IF EXISTS cuenta")
+        onCreate(db)
     }
 
     override fun onCreate(db: SQLiteDatabase)
@@ -50,6 +53,7 @@ class GastosDatabaseHelper(context: Context)
         db.execSQL(CREAR_INDICE_GASTO_FECHA)
         db.execSQL(CREAR_INDICE_GASTO_COMERCIO)
         db.execSQL(CREAR_INDICE_GASTO_ETIQUETA)
+        db.execSQL(CREAR_INDICE_GASTO_ESTADO)
 
         db.execSQL(
             "INSERT INTO cuenta (id, nombre) VALUES (?, ?)",
@@ -72,7 +76,7 @@ class GastosDatabaseHelper(context: Context)
     companion object
     {
         private const val DATABASE_NAME = "gastos.db"
-        private const val DATABASE_VERSION = 2
+        private const val DATABASE_VERSION = 1
 
         private val CREAR_TABLA_CUENTA = """
             CREATE TABLE cuenta (
@@ -110,6 +114,8 @@ class GastosDatabaseHelper(context: Context)
                 fecha_hora INTEGER NOT NULL,
                 comercio_id INTEGER NULL REFERENCES comercio(id),
                 notas TEXT NULL,
+                estado TEXT NOT NULL DEFAULT 'VIGENTE'
+                    CHECK (estado IN ('VIGENTE', 'ANULADO')),
                 FOREIGN KEY (cuenta_id) REFERENCES cuenta(id))
         """.trimIndent()
 
@@ -146,6 +152,11 @@ class GastosDatabaseHelper(context: Context)
         private val CREAR_INDICE_GASTO_ETIQUETA = """
             CREATE INDEX idx_gasto_etiqueta_etiqueta
             ON gasto_etiqueta (etiqueta_id)
+        """.trimIndent()
+
+        private val CREAR_INDICE_GASTO_ESTADO = """
+            CREATE INDEX idx_gasto_estado
+            ON gasto (estado)
         """.trimIndent()
     }
 }

@@ -40,6 +40,12 @@ data class Etiqueta(
     }
 }
 
+enum class EstadoGasto
+{
+    VIGENTE,
+    ANULADO
+}
+
 class Gasto(
     val id: Long = 0L,
     val monto: Double,
@@ -48,11 +54,15 @@ class Gasto(
     categorias: List<Categoria>,
     val fechaHora: Long,
     val comercio: Comercio? = null,
-    val etiquetas: List<Etiqueta> = emptyList(),
-    val notas: String? = null)
+    etiquetas: List<Etiqueta> = emptyList(),
+    val notas: String? = null,
+    val estado: EstadoGasto = EstadoGasto.VIGENTE)
 {
     /** Categorías sin duplicados por id. */
     val categorias: List<Categoria> = categorias.distinctBy { it.id }
+
+    /** Etiquetas sin duplicados por id. */
+    val etiquetas: List<Etiqueta> = etiquetas.distinctBy { it.id }
 
     /** Notas normalizadas solo en extremos; el contenido se respeta. */
     val notasLimpia: String? = notas?.trim()?.takeIf { it.isNotEmpty() }

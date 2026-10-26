@@ -22,7 +22,8 @@ class GastoRepository(private val dao: IGastoDao) : IGastoRepository
             fechaHora = gasto.fechaHora,
             comercio = gasto.comercio,
             etiquetas = etiquetas,
-            notas = gasto.notas)
+            notas = gasto.notas,
+            estado = gasto.estado)
 
         val id = dao.insert(paraGuardar)
 
@@ -35,7 +36,8 @@ class GastoRepository(private val dao: IGastoDao) : IGastoRepository
             fechaHora = paraGuardar.fechaHora,
             comercio = paraGuardar.comercio,
             etiquetas = paraGuardar.etiquetas,
-            notas = paraGuardar.notas)
+            notas = paraGuardar.notas,
+            estado = paraGuardar.estado)
     }
 
     override suspend fun findAll(): List<Gasto> = dao.selectAll()
@@ -43,4 +45,10 @@ class GastoRepository(private val dao: IGastoDao) : IGastoRepository
     override suspend fun findById(id: Long): Gasto? = dao.selectById(id)
 
     override suspend fun findPage(number: Int, size: Int): Page<Gasto> = dao.selectPage(number, size)
+
+    override suspend fun buscarSimilares(
+        descripcion: String,
+        limite: Int): List<Gasto> = dao.buscarSimilares(descripcion, limite)
+
+    override suspend fun anular(id: Long): Boolean = dao.anular(id)
 }

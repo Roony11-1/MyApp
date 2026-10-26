@@ -41,13 +41,20 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.roony11_1.myapp.domain.model.Categoria
+import io.github.roony11_1.myapp.domain.model.Comercio
+import io.github.roony11_1.myapp.domain.model.Cuenta
+import io.github.roony11_1.myapp.domain.model.Etiqueta
 import io.github.roony11_1.myapp.domain.model.normalizarNombre
 import io.github.roony11_1.myapp.ui.components.BotonAgregar
 import io.github.roony11_1.myapp.ui.components.BotonPrincipal
 import io.github.roony11_1.myapp.ui.components.CampoTextoPremium
 import io.github.roony11_1.myapp.ui.components.ChipPremium
+import io.github.roony11_1.myapp.ui.components.DialogoConfirmarGasto
 import io.github.roony11_1.myapp.ui.components.EncabezadoPantalla
+import io.github.roony11_1.myapp.ui.components.ResumenGasto
 import io.github.roony11_1.myapp.ui.components.SelectorFechaHora
+import io.github.roony11_1.myapp.ui.components.SugerenciaGasto
 import io.github.roony11_1.myapp.ui.components.TarjetaNotas
 import io.github.roony11_1.myapp.ui.components.TarjetaSeccion
 import io.github.roony11_1.myapp.ui.viewmodel.RegistrarGastoViewModel
@@ -58,6 +65,16 @@ private enum class CampoCreacion
     CATEGORIA,
     CUENTA
 }
+
+private data class GastoPendiente(
+    val monto: Double,
+    val descripcion: String,
+    val cuenta: Cuenta,
+    val categorias: List<Categoria>,
+    val fechaHora: Long,
+    val comercio: Comercio?,
+    val etiquetas: List<Etiqueta>,
+    val notas: String?)
 
 @Composable
 fun RegistrarGastoScreen(
@@ -83,6 +100,7 @@ fun RegistrarGastoScreen(
     var campoActivo by remember { mutableStateOf<CampoCreacion?>(null) }
     var nuevaCategoria by remember { mutableStateOf("") }
     var nuevaCuenta by remember { mutableStateOf("") }
+    var gastoPendiente by remember { mutableStateOf<GastoPendiente?>(null) }
 
     val comercioFocusRequester = remember { FocusRequester() }
     val categoriaFocusRequester = remember { FocusRequester() }
@@ -203,6 +221,44 @@ fun RegistrarGastoScreen(
             descripcion = "Lo esencial del movimiento")
         {
             CampoTextoPremium(
+                value = descripcion,
+                onValueChange = {
+                    descripcion = it
+                    viewModel.onDescripcionQueryChange(it)
+                },
+                label = "Descripción",
+                leadingIcon = Icons.Rounded.Notes,
+                placeholder = "¿En qué se fue?",
+                minLines = 3,
+                isError = error != null)
+
+            if (state.gastosSimilares.isNotEmpty())
+            {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp))
+                {
+                    Text(
+                        text = "Gastos similares",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                    state.gastosSimilares.forEach { gasto ->
+                        SugerenciaGasto(
+                            gasto = gasto,
+                            enabled = !state.ocupado,
+                            onClick = {
+                                descripcion = gasto.descripcion
+                                categoriasSeleccionadas = gasto.categorias
+                                    .map { it.id }
+                                    .toSet()
+                                cuentaSeleccionadaId = gasto.cuenta.id
+                                viewModel.onSugerenciaSeleccionada(gasto)
+                            })
+                    }
+                }
+            }
+
+            CampoTextoPremium(
                 value = monto,
                 onValueChange = { monto = it },
                 label = "Monto",
@@ -212,15 +268,6 @@ fun RegistrarGastoScreen(
                 textStyle = MaterialTheme.typography.headlineSmall,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal),
-                isError = error != null)
-
-            CampoTextoPremium(
-                value = descripcion,
-                onValueChange = { descripcion = it },
-                label = "Descripción",
-                leadingIcon = Icons.Rounded.Notes,
-                placeholder = "¿En qué se fue?",
-                minLines = 3,
                 isError = error != null)
         }
 
@@ -572,16 +619,45 @@ fun RegistrarGastoScreen(
                         it.id in categoriasSeleccionadas
                     }
 
-                    viewModel.onGuardar(
+                    gastoPendiente = GastoPendiente(
                         monto = montoDouble,
-                        descripcion = descripcion,
+                        descripcion = descripcion.trim(),
                         cuenta = cuentaGuardar,
                         categorias = categoriasGuardar,
                         fechaHora = state.fechaHora,
                         comercio = state.comercioSeleccionado,
                         etiquetas = state.etiquetasSeleccionadas,
-                        notas = state.notas)
+                        notas = state.notas.trim().takeIf { it.isNotEmpty() })
                 }
+            })
+    }
+
+    gastoPendiente?.let { pendiente ->
+        DialogoConfirmarGasto(
+            resumen = ResumenGasto(
+                monto = pendiente.monto,
+                descripcion = pendiente.descripcion,
+                cuenta = pendiente.cuenta.nombre,
+                categorias = pendiente.categorias.map { it.nombre },
+                fechaHora = pendiente.fechaHora,
+                comercio = pendiente.comercio?.nombre,
+                etiquetas = pendiente.etiquetas.map { it.nombre },
+                notas = pendiente.notas),
+            guardando = state.guardando,
+            onConfirmar = {
+                gastoPendiente = null
+                viewModel.onGuardar(
+                    monto = pendiente.monto,
+                    descripcion = pendiente.descripcion,
+                    cuenta = pendiente.cuenta,
+                    categorias = pendiente.categorias,
+                    fechaHora = pendiente.fechaHora,
+                    comercio = pendiente.comercio,
+                    etiquetas = pendiente.etiquetas,
+                    notas = pendiente.notas)
+            },
+            onCancelar = {
+                gastoPendiente = null
             })
     }
 }

@@ -12,10 +12,12 @@ import io.github.roony11_1.myapp.domain.model.Comercio
 import io.github.roony11_1.myapp.domain.model.Cuenta
 import io.github.roony11_1.myapp.domain.model.Etiqueta
 import io.github.roony11_1.myapp.domain.model.Gasto
+import io.github.roony11_1.myapp.domain.model.normalizarNombre
 import io.github.roony11_1.myapp.domain.repository.ICategoriaRepository
 import io.github.roony11_1.myapp.domain.repository.IComercioRepository
 import io.github.roony11_1.myapp.domain.repository.ICuentaRepository
 import io.github.roony11_1.myapp.domain.repository.IEtiquetaRepository
+import io.github.roony11_1.myapp.domain.repository.IGastoRepository
 import io.github.roony11_1.myapp.domain.usecase.RegistrarGasto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -34,6 +36,8 @@ data class RegistrarGastoUiState(
     val error: String? = null,
     val gastoGuardado: Gasto? = null,
     val fechaHora: Long,
+    val descripcionBusqueda: String = "",
+    val gastosSimilares: List<Gasto> = emptyList(),
     val comercioQuery: String = "",
     val comerciosRecomendados: List<Comercio> = emptyList(),
     val comercioSeleccionado: Comercio? = null,
@@ -65,6 +69,7 @@ class RegistrarGastoViewModel(
     private val cuentaRepository: ICuentaRepository,
     private val comercioRepository: IComercioRepository,
     private val etiquetaRepository: IEtiquetaRepository,
+    private val gastoRepository: IGastoRepository,
     clock: IClock) : ViewModel()
 {
     private val _uiState = MutableStateFlow(
@@ -73,6 +78,7 @@ class RegistrarGastoViewModel(
 
     private var comercioJob: Job? = null
     private var etiquetaJob: Job? = null
+    private var descripcionJob: Job? = null
 
     init
     {
@@ -118,6 +124,73 @@ class RegistrarGastoViewModel(
     {
         _uiState.update {
             it.copy(fechaHora = fechaHora)
+        }
+    }
+
+    fun onDescripcionQueryChange(descripcion: String)
+    {
+        descripcionJob?.cancel()
+
+        _uiState.update {
+            it.copy(
+                descripcionBusqueda = descripcion,
+                gastosSimilares = emptyList())
+        }
+
+        if (normalizarNombre(descripcion).length < MIN_DESCRIPCION_BUSQUEDA)
+            return
+
+        descripcionJob = viewModelScope.launch {
+            delay(DEBOUNCE_MS)
+
+            try
+            {
+                val similares = gastoRepository.buscarSimilares(
+                    descripcion = descripcion,
+                    limite = LIMITE_SIMILARES)
+
+                if (_uiState.value.descripcionBusqueda == descripcion)
+                {
+                    _uiState.update {
+                        it.copy(gastosSimilares = similares)
+                    }
+                }
+            }
+            catch (e: CancellationException)
+            {
+                throw e
+            }
+            catch (e: Exception)
+            {
+                if (_uiState.value.descripcionBusqueda == descripcion)
+                {
+                    _uiState.update {
+                        it.copy(gastosSimilares = emptyList())
+                    }
+                }
+            }
+        }
+    }
+
+    fun onSugerenciaSeleccionada(gasto: Gasto)
+    {
+        descripcionJob?.cancel()
+        comercioJob?.cancel()
+        etiquetaJob?.cancel()
+
+        _uiState.update {
+            it.copy(
+                descripcionBusqueda = gasto.descripcion,
+                gastosSimilares = emptyList(),
+                comercioSeleccionado = gasto.comercio,
+                comercioQuery = "",
+                comerciosRecomendados = emptyList(),
+                etiquetaQuery = "",
+                etiquetasRecomendadas = emptyList(),
+                etiquetasSeleccionadas = gasto.etiquetas,
+                notas = gasto.notas.orEmpty(),
+                notasExpandido = gasto.notasLimpia != null,
+                error = null)
         }
     }
 
@@ -459,6 +532,7 @@ class RegistrarGastoViewModel(
 
         comercioJob?.cancel()
         etiquetaJob?.cancel()
+        descripcionJob?.cancel()
 
         _uiState.update {
             it.copy(guardando = true, error = null)
@@ -506,12 +580,15 @@ class RegistrarGastoViewModel(
     {
         comercioJob?.cancel()
         etiquetaJob?.cancel()
+        descripcionJob?.cancel()
         super.onCleared()
     }
 
     companion object
     {
         private const val DEBOUNCE_MS = 250L
+        private const val MIN_DESCRIPCION_BUSQUEDA = 2
+        private const val LIMITE_SIMILARES = 5
 
         fun factory(container: AppContainer): ViewModelProvider.Factory = viewModelFactory {
             initializer {
@@ -522,6 +599,7 @@ class RegistrarGastoViewModel(
                     cuentaRepository = container.cuentaRepository,
                     comercioRepository = container.comercioRepository,
                     etiquetaRepository = container.etiquetaRepository,
+                    gastoRepository = container.gastoRepository,
                     clock = container.clock)
             }
         }

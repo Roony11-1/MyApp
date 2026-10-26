@@ -7,8 +7,10 @@ import io.github.roony11_1.myapp.data.local.db.GastosDatabaseHelper
 import io.github.roony11_1.myapp.domain.model.Categoria
 import io.github.roony11_1.myapp.domain.model.Comercio
 import io.github.roony11_1.myapp.domain.model.Cuenta
+import io.github.roony11_1.myapp.domain.model.EstadoGasto
 import io.github.roony11_1.myapp.domain.model.Etiqueta
 import io.github.roony11_1.myapp.domain.model.Gasto
+import io.github.roony11_1.myapp.domain.model.normalizarNombre
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -18,6 +20,8 @@ interface IGastoDao
     suspend fun selectAll(): List<Gasto>
     suspend fun selectById(id: Long): Gasto?
     suspend fun selectPage(number: Int, size: Int): Page<Gasto>
+    suspend fun buscarSimilares(descripcion: String, limite: Int = 5): List<Gasto>
+    suspend fun anular(id: Long): Boolean
 }
 
 class SqliteGastoDao(
@@ -54,6 +58,8 @@ class SqliteGastoDao(
                         put("notas", notas)
                     else
                         putNull("notas")
+
+                    put("estado", gasto.estado.name)
                 }
 
                 val id = db.insertOrThrow("gasto", null, values)
@@ -160,6 +166,59 @@ class SqliteGastoDao(
         }
     }
 
+    override suspend fun buscarSimilares(
+        descripcion: String,
+        limite: Int): List<Gasto> = withContext(Dispatchers.IO)
+    {
+        if (limite <= 0)
+            return@withContext emptyList()
+
+        val tokens = normalizarNombre(descripcion)
+            .split(' ')
+            .filter { it.isNotBlank() }
+
+        if (tokens.isEmpty())
+            return@withContext emptyList()
+
+        val condiciones = tokens.joinToString(" AND ") {
+            "g.descripcion LIKE ? ESCAPE '\\'"
+        }
+
+        val args = (
+                listOf(EstadoGasto.VIGENTE.name) +
+                        tokens.map { "%${escaparLike(it)}%" } +
+                        limite.toString()).toTypedArray()
+
+        leerGastos(
+            db = helper.readableDatabase,
+            suffix = """
+                WHERE g.estado = ? AND $condiciones
+                ORDER BY g.fecha_hora DESC, g.id DESC
+                LIMIT ?
+            """.trimIndent(),
+            args = args)
+    }
+
+    override suspend fun anular(id: Long): Boolean =
+        withContext(Dispatchers.IO)
+        {
+            val values = ContentValues().apply {
+                put("estado", EstadoGasto.ANULADO.name)
+            }
+
+            helper.writableDatabase.update(
+                "gasto",
+                values,
+                "id = ? AND estado = ?",
+                arrayOf(id.toString(), EstadoGasto.VIGENTE.name)) > 0
+        }
+
+    private fun escaparLike(texto: String): String =
+        texto
+            .replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
+
     private fun leerGastos(
         db: SQLiteDatabase,
         suffix: String,
@@ -176,7 +235,8 @@ class SqliteGastoDao(
                     c.nombre AS cuenta_nombre,
                     g.notas,
                     m.id AS comercio_id,
-                    m.nombre AS comercio_nombre
+                    m.nombre AS comercio_nombre,
+                    g.estado
                 FROM gasto g
                 INNER JOIN cuenta c ON c.id = g.cuenta_id
                 LEFT JOIN comercio m ON m.id = g.comercio_id
@@ -210,7 +270,12 @@ class SqliteGastoDao(
                                 null
                             else
                                 cursor.getString(6),
-                            comercio = comercio))
+                            comercio = comercio,
+                            estado = when (cursor.getString(9))
+                            {
+                                EstadoGasto.ANULADO.name -> EstadoGasto.ANULADO
+                                else -> EstadoGasto.VIGENTE
+                            }))
                 }
             }
         }
@@ -233,7 +298,8 @@ class SqliteGastoDao(
                 fechaHora = fila.fechaHora,
                 comercio = fila.comercio,
                 etiquetas = etiquetasPorGasto[fila.id].orEmpty(),
-                notas = fila.notas)
+                notas = fila.notas,
+                estado = fila.estado)
         }
     }
 
@@ -314,5 +380,6 @@ class SqliteGastoDao(
         val fechaHora: Long,
         val cuenta: Cuenta,
         val notas: String?,
-        val comercio: Comercio?)
+        val comercio: Comercio?,
+        val estado: EstadoGasto)
 }

@@ -9,4 +9,6 @@ interface IGastoRepository
     suspend fun findAll(): List<Gasto>
     suspend fun findById(id: Long): Gasto?
     suspend fun findPage(number: Int, size: Int): Page<Gasto>
+    suspend fun buscarSimilares(descripcion: String, limite: Int = 5): List<Gasto>
+    suspend fun anular(id: Long): Boolean
 }

@@ -31,6 +31,15 @@ class VerGastosViewModel(
         cargarPagina(numero = 0, reemplazar = true)
     }
 
+    fun recargar()
+    {
+        val state = _uiState.value
+        if (state.isLoading || state.loadingMore)
+            return
+
+        cargarPagina(numero = 0, reemplazar = true)
+    }
+
     fun cargarMas()
     {
         val state = _uiState.value

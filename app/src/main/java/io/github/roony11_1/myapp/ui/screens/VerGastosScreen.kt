@@ -35,22 +35,25 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.roony11_1.myapp.core.util.claveDia
 import io.github.roony11_1.myapp.core.util.formatearEncabezadoDia
 import io.github.roony11_1.myapp.core.util.formatearFechaHora
 import io.github.roony11_1.myapp.core.util.formatearMonto
+import io.github.roony11_1.myapp.domain.model.EstadoGasto
 import io.github.roony11_1.myapp.domain.model.Gasto
 import io.github.roony11_1.myapp.ui.components.EncabezadoPantalla
+import io.github.roony11_1.myapp.ui.components.EstadoGastoBadge
 import io.github.roony11_1.myapp.ui.components.UiStateContent
 import io.github.roony11_1.myapp.ui.viewmodel.PagedData
 import io.github.roony11_1.myapp.ui.viewmodel.VerGastosViewModel
@@ -64,8 +67,10 @@ fun VerGastosScreen(
 {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        viewModel.cargar()
+    LifecycleResumeEffect(Unit) {
+        viewModel.recargar()
+
+        onPauseOrDispose { }
     }
 
     Column(modifier = modifier.fillMaxSize())
@@ -363,6 +368,9 @@ private fun GastoItem(
     gasto: Gasto,
     onClick: () -> Unit)
 {
+    val anulado = gasto.estado == EstadoGasto.ANULADO
+    val decoracion = if (anulado) TextDecoration.LineThrough else null
+
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -401,12 +409,28 @@ private fun GastoItem(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp))
             {
-                Text(
-                    text = gasto.descripcion,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp))
+                {
+                    Text(
+                        text = gasto.descripcion,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (anulado)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
+                            MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textDecoration = decoracion,
+                        modifier = Modifier.weight(1f))
+
+                    if (anulado)
+                    {
+                        EstadoGastoBadge(estado = gasto.estado)
+                    }
+                }
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -441,7 +465,11 @@ private fun GastoItem(
                 Text(
                     text = formatearMonto(gasto.monto),
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary)
+                    color = if (anulado)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
+                        MaterialTheme.colorScheme.primary,
+                    textDecoration = decoracion)
 
                 Icon(
                     imageVector = Icons.Rounded.ChevronRight,
