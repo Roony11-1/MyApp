@@ -1,20 +1,19 @@
 package io.github.roony11_1.myapp.domain.usecase
 
-import io.github.roony11_1.myapp.core.services.IClock
 import io.github.roony11_1.myapp.domain.model.Categoria
 import io.github.roony11_1.myapp.domain.model.Cuenta
 import io.github.roony11_1.myapp.domain.model.Gasto
 import io.github.roony11_1.myapp.domain.repository.IGastoRepository
 
 class RegistrarGasto(
-    private val gastoRepository: IGastoRepository,
-    private val clock: IClock)
+    private val gastoRepository: IGastoRepository)
 {
     suspend operator fun invoke(
         monto: Double,
         descripcion: String,
         cuenta: Cuenta,
-        categorias: List<Categoria>): Gasto
+        categorias: List<Categoria>,
+        fechaHora: Long): Gasto
     {
         require(monto > 0) { "El monto debe ser positivo" }
         require(descripcion.isNotBlank()) { "La descripción es obligatoria" }
@@ -25,7 +24,7 @@ class RegistrarGasto(
             descripcion = descripcion,
             cuenta = cuenta,
             categorias = categorias,
-            fechaHora = clock.now())
+            fechaHora = fechaHora)
 
         return gastoRepository.save(gasto)
     }

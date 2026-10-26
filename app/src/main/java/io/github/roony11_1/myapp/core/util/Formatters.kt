@@ -19,6 +19,25 @@ fun formatearFechaHora(epochMillis: Long): String
 
     return fecha.format(formatter)
 }
+
+fun formatearFecha(epochMillis: Long): String
+{
+    val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    val fecha = Instant.ofEpochMilli(epochMillis)
+        .atZone(ZoneId.systemDefault())
+
+    return fecha.format(formatter)
+}
+
+fun formatearHora(epochMillis: Long): String
+{
+    val formatter = DateTimeFormatter.ofPattern("HH:mm")
+    val fecha = Instant.ofEpochMilli(epochMillis)
+        .atZone(ZoneId.systemDefault())
+
+    return fecha.format(formatter)
+}
+
 fun claveDia(fechaHora: Long): LocalDate =
     Instant.ofEpochMilli(fechaHora)
         .atZone(ZoneId.systemDefault())

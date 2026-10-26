@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.roony11_1.myapp.core.di.AppContainer
+import io.github.roony11_1.myapp.core.services.IClock
 import io.github.roony11_1.myapp.domain.model.Categoria
 import io.github.roony11_1.myapp.domain.model.Cuenta
 import io.github.roony11_1.myapp.domain.model.Gasto
@@ -25,7 +26,8 @@ data class RegistrarGastoUiState(
     val cargandoOpciones: Boolean = false,
     val guardando: Boolean = false,
     val error: String? = null,
-    val gastoGuardado: Gasto? = null)
+    val gastoGuardado: Gasto? = null,
+    val fechaHora: Long)
 {
     val ocupado: Boolean get() = cargandoOpciones || guardando
 }
@@ -33,9 +35,11 @@ data class RegistrarGastoUiState(
 class RegistrarGastoViewModel(
     private val registrarGasto: RegistrarGasto,
     private val categoriaRepository: ICategoriaRepository,
-    private val cuentaRepository: ICuentaRepository) : ViewModel()
+    private val cuentaRepository: ICuentaRepository,
+    clock: IClock) : ViewModel()
 {
-    private val _uiState = MutableStateFlow(RegistrarGastoUiState())
+    private val _uiState = MutableStateFlow(
+        RegistrarGastoUiState(fechaHora = clock.now()))
     val uiState: StateFlow<RegistrarGastoUiState> = _uiState.asStateFlow()
 
     init
@@ -78,11 +82,19 @@ class RegistrarGastoViewModel(
         }
     }
 
+    fun onFechaHoraChange(fechaHora: Long)
+    {
+        _uiState.update {
+            it.copy(fechaHora = fechaHora)
+        }
+    }
+
     fun onGuardar(
         monto: Double,
         descripcion: String,
         cuenta: Cuenta,
-        categorias: List<Categoria>)
+        categorias: List<Categoria>,
+        fechaHora: Long)
     {
         if (_uiState.value.guardando)
             return
@@ -95,10 +107,11 @@ class RegistrarGastoViewModel(
             try
             {
                 val gasto = registrarGasto(
-                    monto,
-                    descripcion,
-                    cuenta,
-                    categorias)
+                    monto = monto,
+                    descripcion = descripcion,
+                    cuenta = cuenta,
+                    categorias = categorias,
+                    fechaHora = fechaHora)
 
                 _uiState.update {
                     it.copy(guardando = false, gastoGuardado = gasto)
@@ -131,10 +144,10 @@ class RegistrarGastoViewModel(
             initializer {
                 RegistrarGastoViewModel(
                     registrarGasto = RegistrarGasto(
-                        gastoRepository = container.gastoRepository,
-                        clock = container.clock),
+                        gastoRepository = container.gastoRepository),
                     categoriaRepository = container.categoriaRepository,
-                    cuentaRepository = container.cuentaRepository)
+                    cuentaRepository = container.cuentaRepository,
+                    clock = container.clock)
             }
         }
     }

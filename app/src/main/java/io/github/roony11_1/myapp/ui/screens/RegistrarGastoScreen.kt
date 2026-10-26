@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.roony11_1.myapp.ui.components.SelectorFechaHora
 import io.github.roony11_1.myapp.ui.viewmodel.RegistrarGastoViewModel
 
 @Composable
@@ -177,6 +178,11 @@ fun RegistrarGastoScreen(
             }
         }
 
+        SelectorFechaHora(
+            fechaHora = state.fechaHora,
+            onFechaHoraChange = viewModel::onFechaHoraChange,
+            enabled = !state.ocupado)
+
         if (error != null)
         {
             Surface(
@@ -207,10 +213,11 @@ fun RegistrarGastoScreen(
                 }
 
                 viewModel.onGuardar(
-                    montoDouble,
-                    descripcion,
-                    cuentaGuardar,
-                    categoriasGuardar)
+                    monto = montoDouble,
+                    descripcion = descripcion,
+                    cuenta = cuentaGuardar,
+                    categorias = categoriasGuardar,
+                    fechaHora = state.fechaHora)
             },
             enabled = !state.ocupado,
             shape = MaterialTheme.shapes.medium,
