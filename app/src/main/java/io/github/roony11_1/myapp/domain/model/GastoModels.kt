@@ -2,7 +2,8 @@ package io.github.roony11_1.myapp.domain.model
 
 data class Cuenta(
     val id: Long = 0L,
-    val nombre: String)
+    val nombre: String,
+    val activa: Boolean = true)
 {
     init
     {
@@ -12,7 +13,8 @@ data class Cuenta(
 
 data class Categoria(
     val id: Long = 0L,
-    val nombre: String)
+    val nombre: String,
+    val activa: Boolean = true)
 {
     init
     {
@@ -32,7 +34,8 @@ data class Comercio(
 
 data class Etiqueta(
     val id: Long = 0L,
-    val nombre: String)
+    val nombre: String,
+    val activa: Boolean = true)
 {
     init
     {

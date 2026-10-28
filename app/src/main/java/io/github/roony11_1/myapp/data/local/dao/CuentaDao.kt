@@ -10,18 +10,27 @@ import kotlinx.coroutines.withContext
 interface ICuentaDao
 {
     suspend fun selectAll(): List<Cuenta>
+    suspend fun selectActivas(): List<Cuenta>
     suspend fun crear(nombre: String): Cuenta
+    suspend fun cambiarActiva(id: Long, activa: Boolean): Boolean
 }
 
 class SqliteCuentaDao(private val helper: GastosDatabaseHelper) : ICuentaDao
 {
-    override suspend fun selectAll(): List<Cuenta> =
+    override suspend fun selectAll(): List<Cuenta> = leerCuentas(soloActivas = false)
+
+    override suspend fun selectActivas(): List<Cuenta> = leerCuentas(soloActivas = true)
+
+    private suspend fun leerCuentas(soloActivas: Boolean): List<Cuenta> =
         withContext(Dispatchers.IO)
         {
+            val filtro = if (soloActivas) "WHERE activa = 1" else ""
+
             helper.readableDatabase.rawQuery(
                 """
-                SELECT id, nombre
+                SELECT id, nombre, activa
                 FROM cuenta
+                $filtro
                 ORDER BY id
             """.trimIndent(),
                 null).use { cursor ->
@@ -31,7 +40,8 @@ class SqliteCuentaDao(private val helper: GastosDatabaseHelper) : ICuentaDao
                         add(
                             Cuenta(
                                 id = cursor.getLong(0),
-                                nombre = cursor.getString(1)))
+                                nombre = cursor.getString(1),
+                                activa = cursor.getInt(2) == 1))
                     }
                 }
             }
@@ -50,7 +60,7 @@ class SqliteCuentaDao(private val helper: GastosDatabaseHelper) : ICuentaDao
             {
                 val existente = db.rawQuery(
                     """
-                    SELECT id, nombre
+                    SELECT id, nombre, activa
                     FROM cuenta
                     WHERE nombre = ? COLLATE NOCASE
                     LIMIT 1
@@ -59,14 +69,29 @@ class SqliteCuentaDao(private val helper: GastosDatabaseHelper) : ICuentaDao
                     if (cursor.moveToFirst())
                         Cuenta(
                             id = cursor.getLong(0),
-                            nombre = cursor.getString(1))
+                            nombre = cursor.getString(1),
+                            activa = cursor.getInt(2) == 1)
                     else
                         null
                 }
 
-                val cuenta = existente ?: run {
+                val cuenta = existente?.let { actual ->
+                    if (actual.activa)
+                    {
+                        actual
+                    }
+                    else
+                    {
+                        db.execSQL(
+                            "UPDATE cuenta SET activa = 1 WHERE id = ?",
+                            arrayOf(actual.id))
+
+                        actual.copy(activa = true)
+                    }
+                } ?: run {
                     val values = ContentValues().apply {
                         put("nombre", normalizado)
+                        put("activa", 1)
                     }
 
                     val id = db.insertOrThrow(
@@ -85,4 +110,19 @@ class SqliteCuentaDao(private val helper: GastosDatabaseHelper) : ICuentaDao
                 db.endTransaction()
             }
         }
+
+    override suspend fun cambiarActiva(
+        id: Long,
+        activa: Boolean): Boolean = withContext(Dispatchers.IO)
+    {
+        val values = ContentValues().apply {
+            put("activa", if (activa) 1 else 0)
+        }
+
+        helper.writableDatabase.update(
+            "cuenta",
+            values,
+            "id = ?",
+            arrayOf(id.toString())) > 0
+    }
 }

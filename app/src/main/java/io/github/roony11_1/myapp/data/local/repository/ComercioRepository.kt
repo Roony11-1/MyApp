@@ -8,6 +8,8 @@ import io.github.roony11_1.myapp.domain.repository.IComercioRepository
 class ComercioRepository(
     private val dao: IComercioDao) : IComercioRepository
 {
+    override suspend fun findAll(): List<Comercio> = dao.selectAll()
+
     override suspend fun recomendar(query: String): List<Comercio>
     {
         val normalizada = normalizarNombre(query)

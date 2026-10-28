@@ -94,8 +94,8 @@ class RegistrarGastoViewModel(
         viewModelScope.launch {
             try
             {
-                val categorias = categoriaRepository.findAll()
-                val cuentas = cuentaRepository.findAll()
+                val categorias = categoriaRepository.findActivas()
+                val cuentas = cuentaRepository.findActivas()
 
                 _uiState.update {
                     it.copy(
@@ -187,7 +187,7 @@ class RegistrarGastoViewModel(
                 comerciosRecomendados = emptyList(),
                 etiquetaQuery = "",
                 etiquetasRecomendadas = emptyList(),
-                etiquetasSeleccionadas = gasto.etiquetas,
+                etiquetasSeleccionadas = gasto.etiquetas.filter { it.activa },
                 notas = gasto.notas.orEmpty(),
                 notasExpandido = gasto.notasLimpia != null,
                 error = null)
@@ -346,6 +346,9 @@ class RegistrarGastoViewModel(
 
     fun onEtiquetaToggle(etiqueta: Etiqueta)
     {
+        if (!etiqueta.activa)
+            return
+
         _uiState.update { state ->
             val seleccionadas = state.etiquetasSeleccionadas
             val existe = seleccionadas.any { it.nombre == etiqueta.nombre }

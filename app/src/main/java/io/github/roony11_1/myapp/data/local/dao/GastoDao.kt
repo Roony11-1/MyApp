@@ -10,6 +10,9 @@ import io.github.roony11_1.myapp.domain.model.Cuenta
 import io.github.roony11_1.myapp.domain.model.EstadoGasto
 import io.github.roony11_1.myapp.domain.model.Etiqueta
 import io.github.roony11_1.myapp.domain.model.Gasto
+import io.github.roony11_1.myapp.domain.model.GastosFiltros
+import io.github.roony11_1.myapp.domain.model.MesHistorial
+import io.github.roony11_1.myapp.domain.model.ResumenMes
 import io.github.roony11_1.myapp.domain.model.normalizarNombre
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,9 +22,16 @@ interface IGastoDao
     suspend fun insert(gasto: Gasto): Long
     suspend fun selectAll(): List<Gasto>
     suspend fun selectById(id: Long): Gasto?
-    suspend fun selectPage(number: Int, size: Int): Page<Gasto>
+    suspend fun selectPage(
+        filtros: GastosFiltros,
+        number: Int,
+        size: Int): Page<Gasto>
     suspend fun buscarSimilares(descripcion: String, limite: Int = 5): List<Gasto>
     suspend fun anular(id: Long): Boolean
+    suspend fun resumenMes(desde: Long, hastaExclusivo: Long): ResumenMes
+    suspend fun historialMeses(
+        desde: Long?,
+        hastaExclusivo: Long): List<MesHistorial>
 }
 
 class SqliteGastoDao(
@@ -121,6 +131,7 @@ class SqliteGastoDao(
         }
 
     override suspend fun selectPage(
+        filtros: GastosFiltros,
         number: Int,
         size: Int): Page<Gasto> = withContext(Dispatchers.IO)
     {
@@ -128,13 +139,18 @@ class SqliteGastoDao(
         require(size > 0) { "El tamaño de página debe ser positivo" }
 
         val db = helper.readableDatabase
+        val condiciones = construirCondiciones(filtros)
 
         db.beginTransaction()
         try
         {
             val totalElements = db.rawQuery(
-                "SELECT COUNT(*) FROM gasto",
-                null).use { cursor ->
+                """
+                SELECT COUNT(*)
+                FROM gasto g
+                ${condiciones.where}
+                """.trimIndent(),
+                condiciones.args.toTypedArray()).use { cursor ->
                 cursor.moveToFirst()
                 cursor.getLong(0)
             }
@@ -142,12 +158,16 @@ class SqliteGastoDao(
             val content = leerGastos(
                 db = db,
                 suffix = """
+                    ${condiciones.where}
                     ORDER BY g.fecha_hora DESC, g.id DESC
                     LIMIT ? OFFSET ?
                 """.trimIndent(),
-                args = arrayOf(
-                    size.toString(),
-                    (number.toLong() * size).toString()))
+                args = (
+                        condiciones.args +
+                                listOf(
+                                    size.toString(),
+                                    (number.toLong() * size).toString()))
+                    .toTypedArray())
 
             val page = Page(
                 content = content,
@@ -213,6 +233,136 @@ class SqliteGastoDao(
                 arrayOf(id.toString(), EstadoGasto.VIGENTE.name)) > 0
         }
 
+    override suspend fun resumenMes(
+        desde: Long,
+        hastaExclusivo: Long): ResumenMes = withContext(Dispatchers.IO)
+    {
+        helper.readableDatabase.rawQuery(
+            """
+            SELECT
+                COALESCE(SUM(CASE WHEN estado = ? THEN monto ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN estado = ? THEN 1 ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN estado = ? THEN 1 ELSE 0 END), 0)
+            FROM gasto
+            WHERE fecha_hora >= ? AND fecha_hora < ?
+            """.trimIndent(),
+            arrayOf(
+                EstadoGasto.VIGENTE.name,
+                EstadoGasto.VIGENTE.name,
+                EstadoGasto.ANULADO.name,
+                desde.toString(),
+                hastaExclusivo.toString())).use { cursor ->
+            cursor.moveToFirst()
+            ResumenMes(
+                totalVigente = cursor.getDouble(0),
+                cantidadVigente = cursor.getLong(1),
+                cantidadAnulados = cursor.getLong(2))
+        }
+    }
+
+    override suspend fun historialMeses(
+        desde: Long?,
+        hastaExclusivo: Long): List<MesHistorial> = withContext(Dispatchers.IO)
+    {
+        val condiciones = mutableListOf("fecha_hora < ?")
+        val args = mutableListOf(hastaExclusivo.toString())
+
+        if (desde != null)
+        {
+            condiciones += "fecha_hora >= ?"
+            args += desde.toString()
+        }
+
+        helper.readableDatabase.rawQuery(
+            """
+            SELECT
+                CAST(strftime(
+                    '%Y',
+                    datetime(fecha_hora / 1000, 'unixepoch', 'localtime')
+                ) AS INTEGER) AS anio,
+                CAST(strftime(
+                    '%m',
+                    datetime(fecha_hora / 1000, 'unixepoch', 'localtime')
+                ) AS INTEGER) AS mes,
+                COALESCE(SUM(CASE WHEN estado = ? THEN monto ELSE 0 END), 0),
+                COUNT(*),
+                COALESCE(SUM(CASE WHEN estado = ? THEN 1 ELSE 0 END), 0)
+            FROM gasto
+            WHERE ${condiciones.joinToString(" AND ")}
+            GROUP BY anio, mes
+            ORDER BY anio DESC, mes DESC
+            """.trimIndent(),
+            (listOf(
+                EstadoGasto.VIGENTE.name,
+                EstadoGasto.ANULADO.name) + args).toTypedArray()).use { cursor ->
+            buildList {
+                while (cursor.moveToNext())
+                {
+                    add(
+                        MesHistorial(
+                            anio = cursor.getInt(0),
+                            mes = cursor.getInt(1),
+                            totalVigente = cursor.getDouble(2),
+                            cantidadGastos = cursor.getLong(3),
+                            cantidadAnulados = cursor.getLong(4)))
+                }
+            }
+        }
+    }
+
+    private fun construirCondiciones(filtros: GastosFiltros): Condiciones
+    {
+        val condiciones = mutableListOf(
+            "g.fecha_hora >= ?",
+            "g.fecha_hora < ?")
+        val args = mutableListOf(
+            filtros.desde.toString(),
+            filtros.hastaExclusivo.toString())
+
+        filtros.cuentaId?.let {
+            condiciones += "g.cuenta_id = ?"
+            args += it.toString()
+        }
+
+        filtros.comercioId?.let {
+            condiciones += "g.comercio_id = ?"
+            args += it.toString()
+        }
+
+        val descripcion = filtros.descripcion.trim()
+        if (descripcion.isNotEmpty())
+        {
+            condiciones += "g.descripcion LIKE ? ESCAPE '\\'"
+            args += "%${escaparLike(descripcion)}%"
+        }
+
+        filtros.categoriaId?.let {
+            condiciones += """
+                EXISTS (
+                    SELECT 1
+                    FROM gasto_categoria gc
+                    WHERE gc.gasto_id = g.id AND gc.categoria_id = ?
+                )
+            """.trimIndent()
+            args += it.toString()
+        }
+
+        filtros.etiquetaId?.let {
+            condiciones += """
+                EXISTS (
+                    SELECT 1
+                    FROM gasto_etiqueta ge
+                    WHERE ge.gasto_id = g.id AND ge.etiqueta_id = ?
+                )
+            """.trimIndent()
+            args += it.toString()
+        }
+
+        return Condiciones(
+            where = "WHERE ${condiciones.joinToString(" AND ")}",
+            args = args)
+    }
+
     private fun escaparLike(texto: String): String =
         texto
             .replace("\\", "\\\\")
@@ -233,6 +383,7 @@ class SqliteGastoDao(
                     g.fecha_hora,
                     c.id AS cuenta_id,
                     c.nombre AS cuenta_nombre,
+                    c.activa AS cuenta_activa,
                     g.notas,
                     m.id AS comercio_id,
                     m.nombre AS comercio_nombre,
@@ -246,15 +397,15 @@ class SqliteGastoDao(
             buildList {
                 while (cursor.moveToNext())
                 {
-                    val comercio = if (cursor.isNull(7))
+                    val comercio = if (cursor.isNull(8))
                     {
                         null
                     }
                     else
                     {
                         Comercio(
-                            id = cursor.getLong(7),
-                            nombre = cursor.getString(8))
+                            id = cursor.getLong(8),
+                            nombre = cursor.getString(9))
                     }
 
                     add(
@@ -265,13 +416,14 @@ class SqliteGastoDao(
                             fechaHora = cursor.getLong(3),
                             cuenta = Cuenta(
                                 id = cursor.getLong(4),
-                                nombre = cursor.getString(5)),
-                            notas = if (cursor.isNull(6))
+                                nombre = cursor.getString(5),
+                                activa = cursor.getInt(6) == 1),
+                            notas = if (cursor.isNull(7))
                                 null
                             else
-                                cursor.getString(6),
+                                cursor.getString(7),
                             comercio = comercio,
-                            estado = when (cursor.getString(9))
+                            estado = when (cursor.getString(10))
                             {
                                 EstadoGasto.ANULADO.name -> EstadoGasto.ANULADO
                                 else -> EstadoGasto.VIGENTE
@@ -314,7 +466,7 @@ class SqliteGastoDao(
 
             db.rawQuery(
                 """
-                    SELECT gc.gasto_id, c.id, c.nombre
+                    SELECT gc.gasto_id, c.id, c.nombre, c.activa
                     FROM gasto_categoria gc
                     INNER JOIN categoria c ON c.id = gc.categoria_id
                     WHERE gc.gasto_id IN ($placeholders)
@@ -326,7 +478,8 @@ class SqliteGastoDao(
                     val gastoId = cursor.getLong(0)
                     val categoria = Categoria(
                         id = cursor.getLong(1),
-                        nombre = cursor.getString(2))
+                        nombre = cursor.getString(2),
+                        activa = cursor.getInt(3) == 1)
 
                     resultado.getOrPut(gastoId) {
                         mutableListOf()
@@ -349,7 +502,7 @@ class SqliteGastoDao(
 
             db.rawQuery(
                 """
-                    SELECT ge.gasto_id, e.id, e.nombre
+                    SELECT ge.gasto_id, e.id, e.nombre, e.activa
                     FROM gasto_etiqueta ge
                     INNER JOIN etiqueta e ON e.id = ge.etiqueta_id
                     WHERE ge.gasto_id IN ($placeholders)
@@ -361,7 +514,8 @@ class SqliteGastoDao(
                     val gastoId = cursor.getLong(0)
                     val etiqueta = Etiqueta(
                         id = cursor.getLong(1),
-                        nombre = cursor.getString(2))
+                        nombre = cursor.getString(2),
+                        activa = cursor.getInt(3) == 1)
 
                     resultado.getOrPut(gastoId) {
                         mutableListOf()
@@ -372,6 +526,10 @@ class SqliteGastoDao(
 
         return resultado
     }
+
+    private data class Condiciones(
+        val where: String,
+        val args: List<String>)
 
     private data class FilaGasto(
         val id: Long,

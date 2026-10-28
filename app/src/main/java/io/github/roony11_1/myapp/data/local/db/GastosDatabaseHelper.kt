@@ -19,26 +19,10 @@ class GastosDatabaseHelper(context: Context)
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int)
     {
-        val database = db ?: return
-        recrearBaseDeDatos(database)
     }
 
     override fun onDowngrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int)
     {
-        val database = db ?: return
-        recrearBaseDeDatos(database)
-    }
-
-    private fun recrearBaseDeDatos(db: SQLiteDatabase)
-    {
-        db.execSQL("DROP TABLE IF EXISTS gasto_etiqueta")
-        db.execSQL("DROP TABLE IF EXISTS gasto_categoria")
-        db.execSQL("DROP TABLE IF EXISTS gasto")
-        db.execSQL("DROP TABLE IF EXISTS etiqueta")
-        db.execSQL("DROP TABLE IF EXISTS comercio")
-        db.execSQL("DROP TABLE IF EXISTS categoria")
-        db.execSQL("DROP TABLE IF EXISTS cuenta")
-        onCreate(db)
     }
 
     override fun onCreate(db: SQLiteDatabase)
@@ -81,13 +65,17 @@ class GastosDatabaseHelper(context: Context)
         private val CREAR_TABLA_CUENTA = """
             CREATE TABLE cuenta (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nombre TEXT NOT NULL CHECK (length(trim(nombre)) > 0))
+                nombre TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+                activa INTEGER NOT NULL DEFAULT 1
+                    CHECK (activa IN (0, 1)))
         """.trimIndent()
 
         private val CREAR_TABLA_CATEGORIA = """
             CREATE TABLE categoria (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nombre TEXT NOT NULL CHECK (length(trim(nombre)) > 0))
+                nombre TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+                activa INTEGER NOT NULL DEFAULT 1
+                    CHECK (activa IN (0, 1)))
         """.trimIndent()
 
         private val CREAR_TABLA_COMERCIO = """
@@ -101,7 +89,9 @@ class GastosDatabaseHelper(context: Context)
             CREATE TABLE etiqueta (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nombre TEXT NOT NULL,
-                clave_normalizada TEXT NOT NULL UNIQUE)
+                clave_normalizada TEXT NOT NULL UNIQUE,
+                activa INTEGER NOT NULL DEFAULT 1
+                    CHECK (activa IN (0, 1)))
         """.trimIndent()
 
         private val CREAR_TABLA_GASTO = """

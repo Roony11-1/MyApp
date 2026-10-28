@@ -94,12 +94,14 @@ fun RegistrarGastoScreen(
     var descripcion by remember { mutableStateOf("") }
 
     var categoriasSeleccionadas by remember {
-        mutableStateOf(setOf<Long>(3L))
+        mutableStateOf(emptySet<Long>())
     }
 
     var cuentaSeleccionadaId by remember {
-        mutableStateOf<Long>(1L)
+        mutableStateOf<Long?>(null)
     }
+
+    var opcionesInicializadas by remember { mutableStateOf(false) }
 
     var campoActivo by remember { mutableStateOf<CampoCreacion?>(null) }
     var nuevaCategoria by remember { mutableStateOf("") }
@@ -142,6 +144,32 @@ fun RegistrarGastoScreen(
             viewModel.onExitoConsumido()
             onGuardadoExitoso()
         }
+    }
+
+    LaunchedEffect(
+        state.cargandoOpciones,
+        state.categorias,
+        state.cuentas)
+    {
+        if (opcionesInicializadas || state.cargandoOpciones)
+            return@LaunchedEffect
+
+        if (categoriasSeleccionadas.isEmpty() && state.categorias.isNotEmpty())
+        {
+            val categoria = state.categorias.firstOrNull { it.id == 3L }
+                ?: state.categorias.first()
+            categoriasSeleccionadas = setOf(categoria.id)
+        }
+
+        if (cuentaSeleccionadaId == null && state.cuentas.isNotEmpty())
+        {
+            val cuenta = state.cuentas.firstOrNull { it.id == 1L }
+                ?: state.cuentas.first()
+            cuentaSeleccionadaId = cuenta.id
+        }
+
+        opcionesInicializadas = state.categorias.isNotEmpty() &&
+                state.cuentas.isNotEmpty()
     }
 
     LaunchedEffect(state.categoriaCreada) {
@@ -275,9 +303,13 @@ fun RegistrarGastoScreen(
                             onClick = {
                                 descripcion = gasto.descripcion
                                 categoriasSeleccionadas = gasto.categorias
+                                    .filter { it.activa }
                                     .map { it.id }
                                     .toSet()
-                                cuentaSeleccionadaId = gasto.cuenta.id
+
+                                if (gasto.cuenta.activa)
+                                    cuentaSeleccionadaId = gasto.cuenta.id
+
                                 viewModel.onSugerenciaSeleccionada(gasto)
                             })
                     }

@@ -3,8 +3,10 @@ package io.github.roony11_1.myapp.core.util
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 fun formatearMonto(monto: Double): String
 {
@@ -42,6 +44,19 @@ fun claveDia(fechaHora: Long): LocalDate =
     Instant.ofEpochMilli(fechaHora)
         .atZone(ZoneId.systemDefault())
         .toLocalDate()
+
+fun formatearMes(anio: Int, mes: Int): String
+{
+    val locale = Locale.forLanguageTag("es")
+    val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", locale)
+    val texto = YearMonth.of(anio, mes)
+        .atDay(1)
+        .format(formatter)
+
+    return texto.replaceFirstChar {
+        if (it.isLowerCase()) it.titlecase(locale) else it.toString()
+    }
+}
 
 fun formatearEncabezadoDia(dia: LocalDate): String
 {

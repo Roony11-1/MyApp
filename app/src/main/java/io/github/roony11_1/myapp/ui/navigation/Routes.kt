@@ -4,13 +4,18 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 @Serializable
-data object  Inicio: NavKey
+data object Inicio : NavKey
 
 @Serializable
-data object RegistrarGasto: NavKey
+data object RegistrarGasto : NavKey
 
 @Serializable
-data object VerGastos: NavKey
+data class VerGastos(
+    val anio: Int? = null,
+    val mes: Int? = null) : NavKey
 
 @Serializable
-data class VerGasto(val id: Long): NavKey
+data object Catalogos : NavKey
+
+@Serializable
+data class VerGasto(val id: Long) : NavKey

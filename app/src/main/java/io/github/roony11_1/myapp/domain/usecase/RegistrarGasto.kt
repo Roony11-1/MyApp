@@ -23,6 +23,13 @@ class RegistrarGasto(
         require(monto > 0) { "El monto debe ser positivo" }
         require(descripcion.isNotBlank()) { "La descripción es obligatoria" }
         require(categorias.isNotEmpty()) { "Debe seleccionar una categoría" }
+        require(cuenta.activa) { "La cuenta está desactivada" }
+        require(categorias.all { it.activa }) {
+            "Selecciona solo categorías activas"
+        }
+        require(etiquetas.all { it.activa }) {
+            "Selecciona solo etiquetas activas"
+        }
 
         val gasto = Gasto(
             monto = monto,

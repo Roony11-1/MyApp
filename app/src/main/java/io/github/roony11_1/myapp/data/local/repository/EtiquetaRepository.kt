@@ -8,6 +8,10 @@ import io.github.roony11_1.myapp.domain.repository.IEtiquetaRepository
 class EtiquetaRepository(
     private val dao: IEtiquetaDao) : IEtiquetaRepository
 {
+    override suspend fun findAll(): List<Etiqueta> = dao.selectAll()
+
+    override suspend fun findActivas(): List<Etiqueta> = dao.selectActivas()
+
     override suspend fun recomendar(query: String): List<Etiqueta>
     {
         val normalizada = normalizarNombre(query)
@@ -19,4 +23,8 @@ class EtiquetaRepository(
 
     override suspend fun crear(nombre: String): Etiqueta =
         dao.crear(nombre)
+
+    override suspend fun cambiarActiva(
+        id: Long,
+        activa: Boolean): Boolean = dao.cambiarActiva(id, activa)
 }

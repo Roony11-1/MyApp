@@ -12,10 +12,12 @@ fun EntryProviderScope<NavKey>.verGastosEntry(
     onNavigateToGastoClick: (Long) -> Unit,
     onBack: () -> Unit)
 {
-    entry<VerGastos>
-    {
+    entry<VerGastos> { key ->
         val viewModel: VerGastosViewModel = viewModel(
-            factory = VerGastosViewModel.factory(container))
+            factory = VerGastosViewModel.factory(
+                container = container,
+                anioInicial = key.anio,
+                mesInicial = key.mes))
 
         VerGastosScreen(
             viewModel = viewModel,

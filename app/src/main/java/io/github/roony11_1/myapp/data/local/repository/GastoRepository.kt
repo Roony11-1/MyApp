@@ -4,6 +4,9 @@ package io.github.roony11_1.myapp.data.local.repository
 import io.github.roony11_1.myapp.core.pagination.Page
 import io.github.roony11_1.myapp.data.local.dao.IGastoDao
 import io.github.roony11_1.myapp.domain.model.Gasto
+import io.github.roony11_1.myapp.domain.model.GastosFiltros
+import io.github.roony11_1.myapp.domain.model.MesHistorial
+import io.github.roony11_1.myapp.domain.model.ResumenMes
 import io.github.roony11_1.myapp.domain.model.normalizarNombre
 import io.github.roony11_1.myapp.domain.repository.IGastoRepository
 
@@ -44,11 +47,23 @@ class GastoRepository(private val dao: IGastoDao) : IGastoRepository
 
     override suspend fun findById(id: Long): Gasto? = dao.selectById(id)
 
-    override suspend fun findPage(number: Int, size: Int): Page<Gasto> = dao.selectPage(number, size)
+    override suspend fun findPage(
+        filtros: GastosFiltros,
+        number: Int,
+        size: Int): Page<Gasto> = dao.selectPage(filtros, number, size)
 
     override suspend fun buscarSimilares(
         descripcion: String,
         limite: Int): List<Gasto> = dao.buscarSimilares(descripcion, limite)
 
     override suspend fun anular(id: Long): Boolean = dao.anular(id)
+
+    override suspend fun resumenMes(
+        desde: Long,
+        hastaExclusivo: Long): ResumenMes = dao.resumenMes(desde, hastaExclusivo)
+
+    override suspend fun historialMeses(
+        desde: Long?,
+        hastaExclusivo: Long): List<MesHistorial> =
+        dao.historialMeses(desde, hastaExclusivo)
 }

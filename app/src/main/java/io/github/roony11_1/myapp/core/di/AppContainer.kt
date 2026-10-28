@@ -17,6 +17,7 @@ import io.github.roony11_1.myapp.data.local.db.GastosDatabaseHelper
 import io.github.roony11_1.myapp.data.local.repository.ComercioRepository
 import io.github.roony11_1.myapp.data.local.repository.EtiquetaRepository
 import io.github.roony11_1.myapp.data.local.repository.GastoRepository
+import io.github.roony11_1.myapp.data.local.repository.PeriodoHistorialRepository
 import io.github.roony11_1.myapp.domain.repository.CategoriaRepository
 import io.github.roony11_1.myapp.domain.repository.CuentaRepository
 import io.github.roony11_1.myapp.domain.repository.ICategoriaRepository
@@ -24,6 +25,7 @@ import io.github.roony11_1.myapp.domain.repository.IComercioRepository
 import io.github.roony11_1.myapp.domain.repository.ICuentaRepository
 import io.github.roony11_1.myapp.domain.repository.IEtiquetaRepository
 import io.github.roony11_1.myapp.domain.repository.IGastoRepository
+import io.github.roony11_1.myapp.domain.repository.IPeriodoHistorialRepository
 
 class AppContainer(context: Context)
 {
@@ -51,5 +53,8 @@ class AppContainer(context: Context)
     }
     val etiquetaRepository: IEtiquetaRepository by lazy {
         EtiquetaRepository(etiquetaDao)
+    }
+    val periodoHistorialRepository: IPeriodoHistorialRepository by lazy {
+        PeriodoHistorialRepository(appContext)
     }
 }

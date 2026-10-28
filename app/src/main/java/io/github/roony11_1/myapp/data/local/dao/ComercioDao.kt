@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 
 interface IComercioDao
 {
+    suspend fun selectAll(): List<Comercio>
     suspend fun recomendar(query: String, limit: Int = 8): List<Comercio>
     suspend fun crear(nombre: String): Comercio
     fun obtenerOCrear(db: SQLiteDatabase, nombre: String): Long
@@ -18,6 +19,28 @@ interface IComercioDao
 class SqliteComercioDao(
     private val helper: GastosDatabaseHelper) : IComercioDao
 {
+    override suspend fun selectAll(): List<Comercio> =
+        withContext(Dispatchers.IO)
+        {
+            helper.readableDatabase.rawQuery(
+                """
+                SELECT id, nombre
+                FROM comercio
+                ORDER BY nombre
+            """.trimIndent(),
+                null).use { cursor ->
+                buildList {
+                    while (cursor.moveToNext())
+                    {
+                        add(
+                            Comercio(
+                                id = cursor.getLong(0),
+                                nombre = cursor.getString(1)))
+                    }
+                }
+            }
+        }
+
     override suspend fun recomendar(
         query: String,
         limit: Int): List<Comercio> =
